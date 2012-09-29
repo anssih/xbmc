@@ -2578,6 +2578,61 @@ bool CUtil::IsVobSub( const std::vector<CStdString>& vecSubtitles, const CStdStr
   return false;
 }
 
+CStdString CUtil::GetVobSubSubFromIdx(const CStdString& vobSubIdx)
+{
+  CStdString vobSub = URIUtils::ReplaceExtension(vobSubIdx, ".sub");
+
+  // check if a .sub file exists in the same directory
+  if (CFile::Exists(vobSub))
+  {
+    return vobSub;
+  }
+
+  // look inside a .rar in the same directory
+  CStdString vobSubFilename = URIUtils::GetFileName(vobSub);
+  URIUtils::CreateArchivePath(vobSub, "rar", URIUtils::ReplaceExtension(vobSubIdx, ".rar"), vobSubFilename);
+
+  if (CFile::Exists(vobSub))
+  {
+    return vobSub;
+  }
+
+  return "";
+}
+
+CStdString CUtil::GetVobSubIdxFromSub(const CStdString& vobSub)
+{
+  CStdString vobSubIdx = URIUtils::ReplaceExtension(vobSub, ".idx");
+
+  // check if a .idx file exists in the same directory
+  if (CFile::Exists(vobSubIdx))
+  {
+    return vobSubIdx;
+  }
+
+  // look outside .rar if the .sub is inside one
+  if (URIUtils::IsInRAR(vobSub))
+  {
+    CStdString rarFile;
+    CStdString vobSubIdxDir;
+
+    URIUtils::GetDirectory(vobSub, rarFile);
+
+    if (URIUtils::GetParentPath(rarFile, vobSubIdxDir))
+    {
+      CStdString vobSubIdxFilename = URIUtils::GetFileName(vobSubIdx);
+      URIUtils::AddFileToFolder(vobSubIdxDir, vobSubIdxFilename, vobSubIdx);
+
+      if (CFile::Exists(vobSubIdx))
+      {
+        return vobSubIdx;
+      }
+    }
+  }
+
+  return "";
+}
+
 bool CUtil::CanBindPrivileged()
 {
 #ifdef _LINUX

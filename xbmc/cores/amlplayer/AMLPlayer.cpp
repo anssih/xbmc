@@ -2147,8 +2147,7 @@ int CAMLPlayer::AddSubtitleFile(const std::string &filename, const std::string &
   if(ext == ".sub")
   {
     // check for texual sub, if this is a idx/sub pair, ignore it.
-    CStdString strReplace(URIUtils::ReplaceExtension(filename,".idx"));
-    if (XFILE::CFile::Exists(strReplace))
+    if (!CUtil::GetVobSubIdxFromSub(filename).empty())
       return -1;
   }
 

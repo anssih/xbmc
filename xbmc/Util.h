@@ -88,7 +88,9 @@ public:
   static void ScanForExternalSubtitles(const CStdString& strMovie, std::vector<CStdString>& vecSubtitles );
   static int ScanArchiveForSubtitles( const CStdString& strArchivePath, const CStdString& strMovieFileNameNoExt, std::vector<CStdString>& vecSubtitles );
   static bool FindVobSubPair( const std::vector<CStdString>& vecSubtitles, const CStdString& strIdxPath, CStdString& strSubPath );
-  static bool IsVobSub( const std::vector<CStdString>& vecSubtitles, const CStdString& strSubPath );  
+  static bool IsVobSub( const std::vector<CStdString>& vecSubtitles, const CStdString& strSubPath );
+  static CStdString GetVobSubSubFromIdx(const CStdString& vobSubIdx);
+  static CStdString GetVobSubIdxFromSub(const CStdString& vobSub);
   static int64_t ToInt64(uint32_t high, uint32_t low);
   static CStdString GetNextFilename(const CStdString &fn_template, int max);
   static CStdString GetNextPathname(const CStdString &path_template, int max);
