@@ -2095,31 +2095,16 @@ bool CAMLPlayer::GetStatus()
 void CAMLPlayer::FindSubtitleFiles()
 {
   // find any available external subtitles
-  std::vector<CStdString> filenames;
+  CUtil::SubFileList filenames;
   CUtil::ScanForExternalSubtitles(m_item.GetPath(), filenames);
 
   // find any upnp subtitles
   CStdString key("upnp:subtitle:1");
   for(unsigned s = 1; m_item.HasProperty(key); key.Format("upnp:subtitle:%u", ++s))
-    filenames.push_back(m_item.GetProperty(key).asString());
+    filenames.push_back(CStdString(m_item.GetProperty(key).asString()));
 
-  for(unsigned int i=0;i<filenames.size();i++)
-  {
-    // if vobsub subtitle:		
-    if (URIUtils::GetExtension(filenames[i]) == ".idx")
-    {
-      CStdString strSubFile;
-      if ( CUtil::FindVobSubPair( filenames, filenames[i], strSubFile ) )
-        AddSubtitleFile(filenames[i], strSubFile);
-    }
-    else 
-    {
-      if ( !CUtil::IsVobSub(filenames, filenames[i] ) )
-      {
-        AddSubtitleFile(filenames[i]);
-      }
-    }   
-  }
+  for (CUtil::SubFileList::iterator it = filenames.begin(); it != filenames.end(); ++it)
+    AddSubtitleFile(it->filename, it->vobsubFilename);
 }
 
 int CAMLPlayer::AddSubtitleFile(const std::string &filename, const std::string &subfilename)

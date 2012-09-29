@@ -22,6 +22,7 @@
 #include <climits>
 #include <cmath>
 #include <vector>
+#include <list>
 #include <string.h>
 #include <stdint.h>
 
@@ -84,11 +85,18 @@ public:
   static void RemoveTempFiles();
   static void ClearTempFonts();
 
+  struct SubFile
+  {
+    SubFile(const CStdString& f, const CStdString& v = "") : filename(f), vobsubFilename(v) {}
+    CStdString filename;
+    CStdString vobsubFilename;
+  };
+  typedef std::list<SubFile> SubFileList;
+  
   static void ClearSubtitles();
-  static void ScanForExternalSubtitles(const CStdString& strMovie, std::vector<CStdString>& vecSubtitles );
-  static int ScanArchiveForSubtitles( const CStdString& strArchivePath, const CStdString& strMovieFileNameNoExt, std::vector<CStdString>& vecSubtitles );
-  static bool FindVobSubPair( const std::vector<CStdString>& vecSubtitles, const CStdString& strIdxPath, CStdString& strSubPath );
-  static bool IsVobSub( const std::vector<CStdString>& vecSubtitles, const CStdString& strSubPath );
+  static void ScanForExternalSubtitles(const CStdString& strMovie, SubFileList& subtitles );
+  static int ScanArchiveForSubtitles( const CStdString& strArchivePath, const CStdString& strMovieFileNameNoExt, SubFileList& subtitles );
+  static bool FindVobSubPair( const SubFileList& subtitles, const CStdString& strIdxPath, CStdString& strSubPath );
   static CStdString GetVobSubSubFromIdx(const CStdString& vobSubIdx);
   static CStdString GetVobSubIdxFromSub(const CStdString& vobSub);
   static int64_t ToInt64(uint32_t high, uint32_t low);

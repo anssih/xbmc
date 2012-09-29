@@ -2247,7 +2247,7 @@ CStdString CUtil::GetFrameworksPath(bool forPython)
   return strFrameworksPath;
 }
 
-void CUtil::ScanForExternalSubtitles(const CStdString& strMovie, std::vector<CStdString>& vecSubtitles )
+void CUtil::ScanForExternalSubtitles(const CStdString& strMovie, SubFileList& subtitles )
 {
   unsigned int startTimer = XbmcThreads::SystemClockMillis();
   
@@ -2396,7 +2396,7 @@ void CUtil::ScanForExternalSubtitles(const CStdString& strMovie, std::vector<CSt
           if (URIUtils::IsRAR(strItem) || URIUtils::IsZIP(strItem))
           {
             // zip-file name equals strMovieFileNameNoExt, don't check in zip-file
-            ScanArchiveForSubtitles( items[j]->GetPath(), "", vecSubtitles );
+            ScanArchiveForSubtitles( items[j]->GetPath(), "", subtitles );
           }
           else    // not a rar/zip file
           {
@@ -2405,7 +2405,7 @@ void CUtil::ScanForExternalSubtitles(const CStdString& strMovie, std::vector<CSt
               //Cache subtitle with same name as movie
               if (URIUtils::GetExtension(strItem).Equals(sub_exts[i]))
               {
-                vecSubtitles.push_back( items[j]->GetPath() ); 
+                subtitles.push_back(items[j]->GetPath());
                 CLog::Log(LOGINFO, "%s: found subtitle file %s\n", __FUNCTION__, items[j]->GetPath().c_str() );
               }
             }
@@ -2417,21 +2417,21 @@ void CUtil::ScanForExternalSubtitles(const CStdString& strMovie, std::vector<CSt
           if (URIUtils::IsRAR(strItem) || URIUtils::IsZIP(strItem))
           {
             // check strMovieFileNameNoExt in zip-file
-            ScanArchiveForSubtitles( items[j]->GetPath(), strMovieFileNameNoExt, vecSubtitles );
+            ScanArchiveForSubtitles( items[j]->GetPath(), strMovieFileNameNoExt, subtitles );
           }
         }
       }
     }
   }
 
-  iSize = vecSubtitles.size();
-  for (int i = 0; i < iSize; i++)
+  int i = 0;
+  for (SubFileList::iterator it = subtitles.begin(); it != subtitles.end(); ++it, ++i)
   {
-    if (URIUtils::GetExtension(vecSubtitles[i]).Equals(".smi"))
+    if (URIUtils::GetExtension(it->filename).Equals(".smi"))
     {
       //Cache multi-language sami subtitle
       CDVDSubtitleStream* pStream = new CDVDSubtitleStream();
-      if(pStream->Open(vecSubtitles[i]))
+      if(pStream->Open(it->filename))
       {
         CDVDSubtitleTagSami TagConv;
         TagConv.LoadHead(pStream);
@@ -2440,10 +2440,10 @@ void CUtil::ScanForExternalSubtitles(const CStdString& strMovie, std::vector<CSt
           for (unsigned int k = 0; k < TagConv.m_Langclass.size(); k++)
           {
             strDest.Format("special://temp/subtitle.%s.%d.smi", TagConv.m_Langclass[k].Name, i);
-            if (CFile::Cache(vecSubtitles[i], strDest))
+            if (CFile::Cache(it->filename, strDest))
             {
-              CLog::Log(LOGINFO, " cached subtitle %s->%s\n", vecSubtitles[i].c_str(), strDest.c_str());
-              vecSubtitles.push_back(strDest);
+              CLog::Log(LOGINFO, " cached subtitle %s->%s\n", it->filename.c_str(), strDest.c_str());
+	      subtitles.push_back(strDest);
             }
           }
         }
@@ -2451,10 +2451,29 @@ void CUtil::ScanForExternalSubtitles(const CStdString& strMovie, std::vector<CSt
       delete pStream;
     }
   }
+
+  // find VobSub .sub files matching any .idx files found
+  for (SubFileList::iterator it = subtitles.begin(); it != subtitles.end(); ++it)
+  {
+    if (FindVobSubPair(subtitles, it->filename, it->vobsubFilename))
+    {
+      // .sub file found for an .idx file, now we have to drop the .sub file
+      // from the subtitle list to avoid duplicates
+      for (SubFileList::iterator it2 = subtitles.begin(); it2 != subtitles.end(); ++it2)
+      {
+        if (it2->filename.Equals(it->vobsubFilename))
+        {
+          subtitles.erase(it2);
+          break;
+        }
+      }
+    }
+  }
+
   CLog::Log(LOGDEBUG,"%s: END (total time: %i ms)", __FUNCTION__, (int)(XbmcThreads::SystemClockMillis() - startTimer));
 }
 
-int CUtil::ScanArchiveForSubtitles( const CStdString& strArchivePath, const CStdString& strMovieFileNameNoExt, std::vector<CStdString>& vecSubtitles )
+int CUtil::ScanArchiveForSubtitles( const CStdString& strArchivePath, const CStdString& strMovieFileNameNoExt, SubFileList& subtitles )
 {
   int nSubtitlesAdded = 0;
   CFileItemList ItemList;
@@ -2493,7 +2512,7 @@ int CUtil::ScanArchiveForSubtitles( const CStdString& strArchivePath, const CStd
       URIUtils::CreateArchivePath(strRarInRar, "rar", strArchivePath, strPathInRar);
     else
       URIUtils::CreateArchivePath(strRarInRar, "zip", strArchivePath, strPathInRar);
-    ScanArchiveForSubtitles(strRarInRar,strMovieFileNameNoExt,vecSubtitles);
+    ScanArchiveForSubtitles(strRarInRar,strMovieFileNameNoExt,subtitles);
    }
    // done checking if this is a rar-in-rar
 
@@ -2514,7 +2533,7 @@ int CUtil::ScanArchiveForSubtitles( const CStdString& strArchivePath, const CStd
        strSourceUrl = strPathInRar;
       
        CLog::Log(LOGINFO, "%s: found subtitle file %s\n", __FUNCTION__, strSourceUrl.c_str() );
-       vecSubtitles.push_back( strSourceUrl );
+       subtitles.push_back(strSourceUrl);
        nSubtitlesAdded++;
      }
      
@@ -2527,53 +2546,50 @@ int CUtil::ScanArchiveForSubtitles( const CStdString& strArchivePath, const CStd
 
 /*! \brief in a vector of subtitles finds the corresponding .sub file for a given .idx file
  */
-bool CUtil::FindVobSubPair( const std::vector<CStdString>& vecSubtitles, const CStdString& strIdxPath, CStdString& strSubPath )
+bool CUtil::FindVobSubPair( const SubFileList& subtitles, const CStdString& strIdxPath, CStdString& strSubPath )
 {
   if (URIUtils::GetExtension(strIdxPath) == ".idx")
   {
     CStdString strIdxFile;
     CStdString strIdxDirectory;
+    int foundCount = 0;
+
     URIUtils::Split(strIdxPath, strIdxDirectory, strIdxFile);
-    for (unsigned int j=0; j < vecSubtitles.size(); j++)
+    for (SubFileList::const_iterator it = subtitles.begin(); it != subtitles.end(); ++it)
     {
       CStdString strSubFile;
       CStdString strSubDirectory;
-      URIUtils::Split(vecSubtitles[j], strSubDirectory, strSubFile);
-      if (URIUtils::IsInArchive(vecSubtitles[j]))
+      URIUtils::Split(it->filename, strSubDirectory, strSubFile);
+      if (URIUtils::IsInArchive(it->filename))
         CURL::Decode(strSubDirectory);
       if (URIUtils::GetExtension(strSubFile) == ".sub" &&
           (URIUtils::ReplaceExtension(strIdxFile,"").Equals(URIUtils::ReplaceExtension(strSubFile,"")) ||
            strSubDirectory.Mid(6, strSubDirectory.length()-11).Equals(URIUtils::ReplaceExtension(strIdxPath,""))))
       {
-        strSubPath = vecSubtitles[j];
-        return true;
+        if (foundCount++ == 0)
+          strSubPath = it->filename;
       }
     }
-  }
-  return false;
-}
 
-/*! \brief checks if in the vector of subtitles the given .sub file has a corresponding idx and hence is a vobsub file
- */
-bool CUtil::IsVobSub( const std::vector<CStdString>& vecSubtitles, const CStdString& strSubPath )
-{
-  if (URIUtils::GetExtension(strSubPath) == ".sub")
-  {
-    CStdString strSubFile;
-    CStdString strSubDirectory;
-    URIUtils::Split(strSubPath, strSubDirectory, strSubFile);
-    if (URIUtils::IsInArchive(strSubPath))
-      CURL::Decode(strSubDirectory);
-    for (unsigned int j=0; j < vecSubtitles.size(); j++)
+
+    if (foundCount > 0)
     {
-      CStdString strIdxFile;
-      CStdString strIdxDirectory;
-      URIUtils::Split(vecSubtitles[j], strIdxDirectory, strIdxFile);
-      if (URIUtils::GetExtension(strIdxFile) == ".idx" &&
-          (URIUtils::ReplaceExtension(strIdxFile,"").Equals(URIUtils::ReplaceExtension(strSubFile,"")) ||
-           strSubDirectory.Mid(6, strSubDirectory.length()-11).Equals(URIUtils::ReplaceExtension(vecSubtitles[j],""))))
-        return true;
+      if (foundCount > 1)
+      {
+        // Multiple matches found (one likely reason being e.g. movie.sub in
+        // MicroDVD format and a Subs/movie.rar containing VobSub format subtitles).
+        // Check if we can find one that is clearly in the correct place.
+        CStdString strExactSubPath = GetVobSubSubFromIdx(strIdxPath);
+        
+        if (!strExactSubPath.empty())
+        {
+          strSubPath = strExactSubPath;
+        }
+      }
+        
+      return true;
     }
+
   }
   return false;
 }
