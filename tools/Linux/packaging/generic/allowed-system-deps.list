@@ -1,0 +1,74 @@
+
+# glibc, minimum requirement 2.10 (May 2009)
+ld-linux-x86-64.so.2
+ld-linux-x86-64.so.2(GLIBC_2.3)
+libc.so.6
+libc.so.6(GLIBC_2.2.5)
+libc.so.6(GLIBC_2.3)
+libc.so.6(GLIBC_2.3.2)
+libc.so.6(GLIBC_2.3.3)
+libc.so.6(GLIBC_2.3.4)
+libc.so.6(GLIBC_2.4)
+libc.so.6(GLIBC_2.5)
+libc.so.6(GLIBC_2.6)
+libc.so.6(GLIBC_2.7)
+libc.so.6(GLIBC_2.10)
+# libc.so.6(GLIBC_2.14) memcpy
+# libc.so.6(GLIBC_2.15) finite math
+# libc.so.6(GLIBC_2.17) clock_gettime
+libcrypt.so.1
+libdl.so.2
+libdl.so.2(GLIBC_2.2.5)
+libm.so.6
+libm.so.6(GLIBC_2.2.5)
+libnsl.so.1
+libnsl.so.1(GLIBC_2.2.5)
+libpthread.so.0
+libpthread.so.0(GLIBC_2.2.5)
+libpthread.so.0(GLIBC_2.3.2)
+# libpthread.so.0(GLIBC_2.12) pthread_setname_np
+libresolv.so.2
+libresolv.so.2(GLIBC_2.2.5)
+librt.so.1
+librt.so.1(GLIBC_2.2.5)
+libutil.so.1
+libutil.so.1(GLIBC_2.2.5)
+
+# GCC runtime helpers, minimum requirement 4.3 (March 2008)
+libgcc_s.so.1
+libgcc_s.so.1(GCC_3.0)
+libgcc_s.so.1(GCC_3.3)
+libgcc_s.so.1(GCC_3.3.1)
+libgcc_s.so.1(GCC_4.2.0)
+
+# zlib, minimum requirement 1.2.3.3 (October 2006)
+libz.so.1
+libz.so.1(ZLIB_1.2.0)
+libz.so.1(ZLIB_1.2.3.3)
+
+# libcap, on ~all system as coreutils dep, minimum major 2 (2009ish)
+libcap.so.2
+
+# X11 stuff
+# TODO: maybe some of the less common ones belong to depends
+libxcb.so.1
+libGL.so.1
+libGLU.so.1
+libICE.so.6
+libSM.so.6
+libX11.so.6
+libXau.so.6
+libXdmcp.so.6
+libXext.so.6
+libXmu.so.6
+libXrandr.so.2
+libXt.so.6
+
+# TODO these we do not really want, add them to depends or make the build not depend on them:
+libGLEW.so.1.9
+libGLESv2.so.2
+libavahi-client.so.3
+libavahi-common.so.3
+libbluetooth.so.3
+libva.so.1
+libva-glx.so.1

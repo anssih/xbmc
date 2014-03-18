@@ -26,6 +26,8 @@ $(TARBALLS_LOCATION)/$(ARCHIVE):
 $(PLATFORM): $(TARBALLS_LOCATION)/$(ARCHIVE) $(DEPS)
 	rm -rf $(PLATFORM); mkdir -p $(PLATFORM)
 	cd $(PLATFORM); $(ARCHIVE_TOOL) $(ARCHIVE_TOOL_FLAGS) $(TARBALLS_LOCATION)/$(ARCHIVE)
+	# unneeded -lc interferes with as-needed of generic-linux builds
+	sed -i "s,-lc,," $(PLATFORM)/source3/Makefile.in
 	cd $(PLATFORM)/source3; $(CONFIGURE)
 
 $(LIBDYLIB): $(PLATFORM)

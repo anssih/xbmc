@@ -41,6 +41,11 @@ AC_ARG_ENABLE([gplv3],
   [enable gplv3 components. default off for android, on everywhere else])],
   [use_gplv3=1], [use_gplv3=auto])
 
+AC_ARG_ENABLE([generic-linux],
+  [AS_HELP_STRING([--enable-generic-linux],
+  [enable symbol mangling to support other Linux distributions])],
+  [generic_linux=yes])
+
 
 AC_CHECK_PROG(HAVE_UNZIP,unzip,"yes","no",)
 if test "x$HAVE_UNZIP" = "xno" ; then
@@ -393,6 +398,31 @@ if test "$platform_os" == "android"; then
   fi
 fi
 
+if test "$generic_linux" = "yes"; then
+  platform_includes+=" -include $(readlink -f $srcdir)/generic-linux/symbol-overrides.h"
+  # --as-needed to avoid some extra unneeded deps inserted by some build systems
+  # --static-libstdc++ to avoid depending on any specific GNU C++ version
+  platform_ldflags+=" -Wl,--as-needed -static-libstdc++"
+
+  # For below linker script (NOTE: does not obey LDFLAGS et al.). Just
+  # using "-lc" directly would cause an infinite loop.
+  libc=$(readlink -f $($CC $platform_cflags -print-file-name=libc.so))
+
+  # Fix linking failure of clock_gettime using "-lc -lrt" in that order.
+  # This is fairly inoptimal as it masks missing "-lrt", suggestions welcome.
+  m4_pattern_allow(AS_NEEDED)
+  echo "INPUT(AS_NEEDED(-lrt) $libc)" > $prefix/$deps_dir/lib/libc.so
+
+  sym_ver="GLIBC_2.0"
+  if test "$use_cpu" = "x86_64"; then
+    sym_ver="GLIBC_2.2.5"
+  fi
+  # Modify the static C++ library to link against old memcpy to avoid deps on
+  # a too recent glibc. This is basically what we achieve more cleanly with
+  # symbol-overrides.h at compile-time for everything we build ourselves.
+  objcopy --redefine-sym memcpy=memcpy@$sym_ver $($CXX $platform_cflags -print-file-name=libstdc++.a) $prefix/$deps_dir/lib/libstdc++.a
+fi
+
 if test "$platform_os" == "android"; then
 echo -e
   AC_SUBST(use_sdk_path)
@@ -419,6 +449,7 @@ AC_SUBST(need_libiconv)
 AC_SUBST(use_gplv3)
 AC_SUBST(has_libcrystax)
 AC_SUBST(use_xcode)
+AC_SUBST(generic_linux)
 
 AC_OUTPUT
 echo -e "toolchain:\t $use_toolchain"
