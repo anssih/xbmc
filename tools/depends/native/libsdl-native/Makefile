@@ -11,7 +11,9 @@ ARCHIVE=$(SOURCE).tar.gz
 
 # configuration settings
 CONFIGURE=./configure --prefix=$(PREFIX) \
-  --without-x --disable-video-x11 --disable-video-directfb --enable-nasm=no
+  --without-x --disable-video-x11 --disable-video-directfb --enable-nasm=no \
+  --disable-input-tslib \
+  --disable-video-svga \
 
 LIBDYLIB=$(PLATFORM)/build/.libs/lib$(LIBNAME).a
 
