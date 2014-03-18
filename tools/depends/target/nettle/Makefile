@@ -9,7 +9,7 @@ ARCHIVE=$(SOURCE).tar.gz
 
 # configuration settings
 CONFIGURE=cp -f $(CONFIG_SUB) $(CONFIG_GUESS) .; \
-          ./configure --prefix=$(PREFIX) --disable-shared --disable-openssl
+          ./configure --prefix=$(PREFIX) --libdir=$(PREFIX)/lib --disable-shared --disable-openssl
 
 LIBDYLIB=$(PLATFORM)/src/.libs/$(LIBNAME).a
 
