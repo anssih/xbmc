@@ -75,6 +75,9 @@ fi
 #gnutls
 gl_cv_func_gettimeofday_clobber=no
 
+#afpfs-ng
+ac_cv_lib_readline_readline=false
+ac_cv_lib_ncurses_main=false
 
 #samba
 SMB_BUILD_CC_NEGATIVE_ENUM_VALUES=yes
