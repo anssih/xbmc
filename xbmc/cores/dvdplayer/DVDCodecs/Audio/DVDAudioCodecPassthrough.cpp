@@ -52,10 +52,12 @@ bool CDVDAudioCodecPassthrough::Open(CDVDStreamInfo &hints, CDVDCodecOptions &op
 
   /* 32kHz E-AC-3 passthrough requires 128kHz IEC 60958 stream
    * which HDMI does not support, and IEC 61937 does not mention
-   * reduced sample rate support, so support only 44.1 and 48 */
+   * reduced sample rate support, so support only 44.1 and 48. */
+  /* Standard DTS streams have a maximum bitrate of 1.5Mbps,
+   * bitrates over that require a DTS-HD-like passthrough. */
   if ((hints.codec == AV_CODEC_ID_AC3 && bSupportsAC3Out) ||
       (hints.codec == AV_CODEC_ID_EAC3 && bSupportsEAC3Out && (hints.samplerate == 44100 || hints.samplerate == 48000)) ||
-      (hints.codec == AV_CODEC_ID_DTS && bSupportsDTSOut) ||
+      (hints.codec == AV_CODEC_ID_DTS && bSupportsDTSOut && (bSupportsDTSHDOut || hints.bitrate <= 1536000)) ||
       (hints.codec == AV_CODEC_ID_TRUEHD && bSupportsTrueHDOut))
   {
     return true;
@@ -85,6 +87,7 @@ enum AEDataFormat CDVDAudioCodecPassthrough::GetDataFormat()
     case CAEStreamInfo::STREAM_TYPE_DTS_1024:
     case CAEStreamInfo::STREAM_TYPE_DTS_2048:
     case CAEStreamInfo::STREAM_TYPE_DTSHD_CORE:
+    case CAEStreamInfo::STREAM_TYPE_DTS_OTHER:
       return AE_FMT_DTS;
 
     case CAEStreamInfo::STREAM_TYPE_EAC3:

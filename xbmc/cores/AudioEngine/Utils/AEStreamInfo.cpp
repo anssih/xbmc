@@ -549,6 +549,14 @@ unsigned int CAEStreamInfo::SyncDTS(uint8_t *data, unsigned int size)
     if (bits == 14)
       m_fsize = m_fsize / 14 * 16;
 
+    if (m_fsize > (dtsBlocks << 3))
+    {
+      /* m_fsize is too big to fit into the burst period (bitrate over 1.5Mbps,
+       * not compliant with the current DTS spec), handle it via DTS type IV
+       * like DTS-HD is. */
+      dataType = STREAM_TYPE_DTS_OTHER;
+    }
+
     /* we need enough data to check for DTS-HD */
     if (size - skip < m_fsize + 10)
     {
@@ -601,7 +609,10 @@ unsigned int CAEStreamInfo::SyncDTS(uint8_t *data, unsigned int size)
       }
       else
       {
-        m_outputRate     = m_sampleRate;
+        if (dataType == STREAM_TYPE_DTS_OTHER)
+          m_outputRate     = 192000; /* DTS-HD-style passthrough with extra bandwidth */
+        else
+          m_outputRate     = m_sampleRate;
         m_outputChannels = 2;
         m_channelMap     = CAEChannelInfo(OutputMaps[0]);
       }
@@ -611,6 +622,7 @@ unsigned int CAEStreamInfo::SyncDTS(uint8_t *data, unsigned int size)
       {
         case STREAM_TYPE_DTSHD     : type = "dtsHD"; break;
         case STREAM_TYPE_DTSHD_CORE: type = "dtsHD (core)"; break;
+        case STREAM_TYPE_DTS_OTHER : type = "dts (high unofficial bitrate)"; break;
         default                    : type = "dts"; break;
       }
 

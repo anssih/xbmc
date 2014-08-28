@@ -60,6 +60,7 @@ void CAEBitstreamPacker::Pack(CAEStreamInfo &info, uint8_t* data, int size)
       break;
 
     case CAEStreamInfo::STREAM_TYPE_DTSHD:
+    case CAEStreamInfo::STREAM_TYPE_DTS_OTHER:
       PackDTSHD (info, data, size);
       break;
 
