@@ -1066,6 +1066,8 @@ bool CAESinkALSA::OpenPCMDevice(const std::string &name, const std::string &para
 
 void CAESinkALSA::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
 {
+  m_deviceMonitor.Start();
+
   /* ensure that ALSA has been initialized */
   snd_lib_error_set_handler(sndLibErrorHandler);
   if(!snd_config || force)
@@ -1576,5 +1578,7 @@ void CAESinkALSA::sndLibErrorHandler(const char *file, int line, const char *fun
   }
   va_end(arg);
 }
+
+CALSADeviceMonitor CAESinkALSA::m_deviceMonitor; // ARGH
 
 #endif
