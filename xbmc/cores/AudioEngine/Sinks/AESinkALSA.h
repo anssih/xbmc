@@ -25,6 +25,7 @@
 #include "cores/AudioEngine/Interfaces/AESink.h"
 #include "cores/AudioEngine/Utils/AEDeviceInfo.h"
 #include "cores/AudioEngine/Sinks/alsa/ALSADeviceMonitor.h"
+#include "cores/AudioEngine/Sinks/alsa/ALSAHControlMonitor.h"
 #include <stdint.h>
 
 #define ALSA_PCM_NEW_HW_PARAMS_API
@@ -80,6 +81,7 @@ private:
   snd_pcm_t        *m_pcm;
   int               m_timeout;
 
+  static CALSAHControlMonitor m_controlMonitor;
   static CALSADeviceMonitor m_deviceMonitor;
 
   struct ALSAConfig

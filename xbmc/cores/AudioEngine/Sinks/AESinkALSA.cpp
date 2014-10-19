@@ -1081,6 +1081,8 @@ void CAESinkALSA::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
   snd_config_t *config;
   snd_config_copy(&config, snd_config);
 
+  m_controlMonitor.Clear();
+
   /* Always enumerate the default device.
    * Note: If "default" is a stereo device, EnumerateDevice()
    * will automatically add "@" instead to enable surroundXX mangling.
@@ -1157,6 +1159,8 @@ void CAESinkALSA::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
     free(desc);
   }
   snd_device_name_free_hint(hints);
+
+  m_controlMonitor.Start();
 
   /* set the displayname for default device */
   if (!list.empty() && list[0].m_deviceName == "default")
@@ -1338,6 +1342,10 @@ void CAESinkALSA::EnumerateDevice(AEDeviceInfoList &list, const std::string &dev
           {
             snd_hctl_load(hctl);
             bool badHDMI = false;
+
+            /* add ELD to monitoring */
+            m_controlMonitor.Add(strHwName, SND_CTL_ELEM_IFACE_PCM, dev, "ELD");
+
             if (!GetELD(hctl, dev, info, badHDMI))
               CLog::Log(LOGDEBUG, "CAESinkALSA - Unable to obtain ELD information for device \"%s\" (not supported by device, or kernel older than 3.2)",
                         device.c_str());
@@ -1579,6 +1587,7 @@ void CAESinkALSA::sndLibErrorHandler(const char *file, int line, const char *fun
   va_end(arg);
 }
 
+CALSAHControlMonitor CAESinkALSA::m_controlMonitor; // ARGH
 CALSADeviceMonitor CAESinkALSA::m_deviceMonitor; // ARGH
 
 #endif
