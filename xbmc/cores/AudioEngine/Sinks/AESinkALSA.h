@@ -33,6 +33,10 @@
 
 #include "threads/CriticalSection.h"
 
+// ARGH... this is apparently needed to avoid FDEventMonitor
+// being destructed before CALSA*Monitor below.
+#include "linux/FDEventMonitor.h"
+
 class CAESinkALSA : public IAESink
 {
 public:
@@ -82,7 +86,9 @@ private:
   int               m_timeout;
 
   static CALSAHControlMonitor m_controlMonitor;
+#if HAVE_LIBUDEV
   static CALSADeviceMonitor m_deviceMonitor;
+#endif
 
   struct ALSAConfig
   {

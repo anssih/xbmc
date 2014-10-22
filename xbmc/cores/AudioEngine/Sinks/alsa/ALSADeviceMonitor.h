@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2010-2013 Team XBMC
+ *      Copyright (C) 2014 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  */
 
 #include "system.h"
-#ifdef HAS_ALSA
+#if defined(HAS_ALSA) && defined(HAVE_LIBUDEV)
 
 #include <string>
 #include <vector>
@@ -40,7 +40,7 @@ private:
   static void FDEventCallback(int id, int fd, short revents, void *data);
 
   int m_fdMonitorId;
-  
+
   struct udev *m_udev;
   struct udev_monitor* m_udevMonitor;
 };

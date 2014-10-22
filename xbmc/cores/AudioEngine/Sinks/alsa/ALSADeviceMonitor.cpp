@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2010-2013 Team XBMC
+ *      Copyright (C) 2014 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -19,7 +19,6 @@
  */
 #include "system.h"
 #if defined(HAS_ALSA) && defined(HAVE_LIBUDEV)
-// TODO BUILD WITHOUT LIBUDEV
 
 #include <libudev.h>
 
@@ -49,28 +48,28 @@ void CALSADeviceMonitor::Start()
     m_udev = udev_new();
     if (!m_udev)
     {
-      // ERROR LOG
+      CLog::Log(LOGWARNING, "CALSADeviceMonitor::Start - Unable to open udev handle");
       return;
     }
 
     m_udevMonitor = udev_monitor_new_from_netlink(m_udev, "udev");
     if (!m_udevMonitor)
     {
-      // ERROR LOG
+      CLog::Log(LOGERROR, "CALSADeviceMonitor::Start - udev_monitor_new_from_netlink() failed");
       goto err_unref_udev;
     }
 
     err = udev_monitor_filter_add_match_subsystem_devtype(m_udevMonitor, "sound", NULL);
     if (err)
     {
-      // ERROR LOG
+      CLog::Log(LOGERROR, "CALSADeviceMonitor::Start - udev_monitor_filter_add_match_subsystem_devtype() failed");
       goto err_unref_monitor;
     }
 
     err = udev_monitor_enable_receiving(m_udevMonitor);
     if (err)
     {
-      // ERROR LOG
+      CLog::Log(LOGERROR, "CALSADeviceMonitor::Start - udev_monitor_enable_receiving() failed");
       goto err_unref_monitor;
     }
 
