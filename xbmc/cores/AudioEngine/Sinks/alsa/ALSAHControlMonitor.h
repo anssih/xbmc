@@ -23,6 +23,7 @@
 #ifdef HAS_ALSA
 
 #include <string>
+#include <map>
 #include <vector>
 
 #include <alsa/asoundlib.h>
@@ -39,7 +40,7 @@ public:
            const std::string& name);
 
   void Clear();
-  
+
   void Start();
   void Stop();
 
@@ -47,7 +48,19 @@ private:
   static int HCTLCallback(snd_hctl_elem_t *elem, unsigned int mask);
   static void FDEventCallback(int id, int fd, short revents, void *data);
 
-  std::vector<snd_hctl_t *> m_ctlHandles;
+  snd_hctl_t* GetHandle(const std::string& ctlHandleName);
+  void PutHandle(const std::string& ctlHandleName);
+
+  struct CTLHandle
+  {
+    snd_hctl_t *handle;
+    int useCount;
+
+    CTLHandle(snd_hctl_t *handle_) : handle(handle_), useCount(0) {}
+    CTLHandle() : handle(NULL), useCount(0) {}
+  };
+
+  std::map<std::string, CTLHandle> m_ctlHandles;
 
   std::vector<int> m_fdMonitorIds;
 };

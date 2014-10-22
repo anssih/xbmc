@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2010-2013 Team XBMC
+ *      Copyright (C) 2014 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -40,48 +40,42 @@ bool CALSAHControlMonitor::Add(const std::string& ctlHandleName,
                                unsigned int device,
                                const std::string& name)
 {
-  bool ok = false;
-  snd_hctl_t *hctl;
+  snd_hctl_t *hctl = GetHandle(ctlHandleName);
 
-  if (snd_hctl_open(&hctl, ctlHandleName.c_str(), 0) == 0)
+  if (!hctl)
   {
-    if (snd_hctl_load(hctl) == 0)
-    {
-      snd_hctl_elem_t *elem;
-      snd_ctl_elem_id_t *id;
-
-      snd_ctl_elem_id_alloca(&id);
-
-      snd_ctl_elem_id_set_interface(id, interface);
-      snd_ctl_elem_id_set_name     (id, name.c_str());
-      snd_ctl_elem_id_set_device   (id, device);
-
-      elem = snd_hctl_find_elem(hctl, id);
-      if (elem) {
-        snd_hctl_elem_set_callback(elem, HCTLCallback);
-        snd_hctl_nonblock(hctl, 1);
-        m_ctlHandles.push_back(hctl);
-        ok = true;
-      }
-    }
-
-    /* in OK case we keep it open */
-    if (!ok)
-    {
-      snd_hctl_close(hctl);
-    }
+    return false;
   }
 
-  return ok;
+  snd_ctl_elem_id_t *id;
+
+  snd_ctl_elem_id_alloca(&id);
+
+  snd_ctl_elem_id_set_interface(id, interface);
+  snd_ctl_elem_id_set_name     (id, name.c_str());
+  snd_ctl_elem_id_set_device   (id, device);
+
+  snd_hctl_elem_t *elem = snd_hctl_find_elem(hctl, id);
+
+  if (!elem)
+  {
+    PutHandle(ctlHandleName);
+    return false;
+  }
+
+  snd_hctl_elem_set_callback(elem, HCTLCallback);
+
+  return true;
 }
 
 void CALSAHControlMonitor::Clear()
 {
   Stop();
 
-  for (unsigned int i = 0; i < m_ctlHandles.size(); ++i)
+  for (std::map<std::string, CTLHandle>::iterator it = m_ctlHandles.begin();
+       it != m_ctlHandles.end(); ++it)
   {
-    snd_hctl_close(m_ctlHandles[i]);
+    snd_hctl_close(it->second.handle);
   }
   m_ctlHandles.clear();
 }
@@ -92,18 +86,19 @@ void CALSAHControlMonitor::Start()
 
   std::vector<struct pollfd> pollfds;
   std::vector<CFDEventMonitor::MonitoredFD> monitoredFDs;
-  
-  for (unsigned int i = 0; i < m_ctlHandles.size(); ++i)
+
+  for (std::map<std::string, CTLHandle>::iterator it = m_ctlHandles.begin();
+       it != m_ctlHandles.end(); ++it)
   {
-    pollfds.resize(snd_hctl_poll_descriptors_count(m_ctlHandles[i]));
-    int fdcount = snd_hctl_poll_descriptors(m_ctlHandles[i], &pollfds[0], pollfds.size());
+    pollfds.resize(snd_hctl_poll_descriptors_count(it->second.handle));
+    int fdcount = snd_hctl_poll_descriptors(it->second.handle, &pollfds[0], pollfds.size());
 
     for (int j = 0; j < fdcount; ++j)
     {
       monitoredFDs.push_back(CFDEventMonitor::MonitoredFD(pollfds[j].fd,
                                                           pollfds[j].events,
                                                           FDEventCallback,
-                                                          m_ctlHandles[i]));
+                                                          it->second.handle));
     }
   }
 
@@ -137,5 +132,42 @@ void CALSAHControlMonitor::FDEventCallback(int id, int fd, short revents, void *
   snd_hctl_t *hctl = (snd_hctl_t *)data;
   snd_hctl_handle_events(hctl);
 }
+
+snd_hctl_t* CALSAHControlMonitor::GetHandle(const std::string& ctlHandleName)
+{
+  if (!m_ctlHandles.count(ctlHandleName))
+  {
+    snd_hctl_t *hctl;
+
+    if (snd_hctl_open(&hctl, ctlHandleName.c_str(), 0) != 0)
+    {
+        CLog::Log(LOGWARNING, "CALSAHControlMonitor::GetHandle - snd_hctl_open() failed for \"%s\"", ctlHandleName.c_str());
+        return NULL;
+    }
+    if (snd_hctl_load(hctl) != 0)
+    {
+      CLog::Log(LOGERROR, "CALSAHControlMonitor::GetHandle - snd_hctl_load() failed for \"%s\"", ctlHandleName.c_str());
+      snd_hctl_close(hctl);
+      return NULL;
+    }
+
+    snd_hctl_nonblock(hctl, 1);
+
+    m_ctlHandles[ctlHandleName] = CTLHandle(hctl);
+  }
+
+  m_ctlHandles[ctlHandleName].useCount++;
+  return m_ctlHandles[ctlHandleName].handle;
+}
+
+void CALSAHControlMonitor::PutHandle(const std::string& ctlHandleName)
+{
+  if (--m_ctlHandles[ctlHandleName].useCount == 0)
+  {
+    snd_hctl_close(m_ctlHandles[ctlHandleName].handle);
+    m_ctlHandles.erase(ctlHandleName);
+  }
+}
+
 
 #endif
