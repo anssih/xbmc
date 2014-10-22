@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2010-2013 Team XBMC
+ *      Copyright (C) 2014 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 
 #include <poll.h>
 #include <sys/eventfd.h>
+#include <errno.h>
 
 #include "utils/log.h"
 
@@ -43,7 +44,7 @@ CFDEventMonitor::~CFDEventMonitor()
 
     /* wake up the poll() call */
     eventfd_write(m_wakeupfd, 1);
-    
+
     /* Wait for the thread to stop */
     StopThread(true);
 
@@ -73,7 +74,7 @@ void CFDEventMonitor::AddFDs(const std::vector<MonitoredFD>& monitoredFDs,
     AddFDLocked(monitoredFDs[i], id);
     ids.push_back(id);
   }
-  
+
   StartMonitoring();
 }
 
@@ -84,9 +85,9 @@ void CFDEventMonitor::RemoveFD(int id)
 
   if (m_monitoredFDs.erase(id) != 1)
   {
-    // LOG ERROR
+    CLog::Log(LOGERROR, "CFDEventMonitor::RemoveFD - Tried to remove non-existing monitoredFD %d", id);
   }
-  
+
   UpdatePollDescs();
 }
 
@@ -99,10 +100,10 @@ void CFDEventMonitor::RemoveFDs(const std::vector<int>& ids)
   {
     if (m_monitoredFDs.erase(ids[i]) != 1)
     {
-      // LOG ERROR
+      CLog::Log(LOGERROR, "CFDEventMonitor::RemoveFDs - Tried to remove non-existing monitoredFD %d while removing %u FDs", ids[i], (unsigned)ids.size());
     }
   }
-  
+
   UpdatePollDescs();
 }
 
@@ -113,26 +114,27 @@ void CFDEventMonitor::Process()
   while (!m_bStop)
   {
     CSingleLock lock(m_mutex);
-
-    /* flush wakeup fd */
-    eventfd_read(m_wakeupfd, &dummy);
-
     CSingleLock pollLock(m_pollMutex);
 
     /*
-     * Leave the main mutex to allow another thread to
-     * 1. Lock main mutex (to pause this loop).
-     * 2. Signal poll handler to exit via m_wakeupfd.
-     * 3. Lock poll mutex (to make sure poll handling has stopped).
+     * Leave the main mutex here to allow another thread to
+     * lock it while we are in poll().
+     * By then calling InterruptPoll() the other thread can
+     * wake up poll and wait for the processing to pause at
+     * the above lock(m_mutex).
      */
     lock.Leave();
 
     int err = poll(&m_pollDescs[0], m_pollDescs.size(), -1);
-    if (err < 0)
+
+    if (err < 0 && errno != EINTR)
     {
-      // ERROR
+      CLog::Log(LOGERROR, "CFDEventMonitor::Process - poll() failed, error %d, stopping monitoring", errno);
+      StopThread(false);
     }
-    // Something woke us up - either there is data available or we are shutting down
+
+    // Something woke us up - either there is data available or we are being
+    // paused/stopped via m_wakeupfd.
 
     for (unsigned int i = 0; i < m_pollDescs.size(); ++i)
     {
@@ -147,22 +149,31 @@ void CFDEventMonitor::Process()
           monitoredFD.callback(id, pollDesc.fd, pollDesc.revents,
                                monitoredFD.callbackData);
         }
-        
+
         if (pollDesc.revents & (POLLERR | POLLHUP | POLLNVAL))
         {
-          // ERROR LOG and REMOVE
+          CLog::Log(LOGERROR, "CFDEventMonitor::Process - polled fd %d got revents 0x%x, removing it", pollDesc.fd, pollDesc.revents);
+
+          /* Probably would be nice to inform our caller that their FD was
+           * dropped, but oh well... */
+          m_monitoredFDs.erase(id);
+          UpdatePollDescs();
         }
 
         pollDesc.revents = 0;
       }
     }
+
+    /* flush wakeup fd */
+    eventfd_read(m_wakeupfd, &dummy);
+
   }
 }
 
 void CFDEventMonitor::AddFDLocked(const MonitoredFD& monitoredFD, int& id)
 {
   id = m_nextID;
-  
+
   while (m_monitoredFDs.count(id))
   {
     ++id;
@@ -170,7 +181,7 @@ void CFDEventMonitor::AddFDLocked(const MonitoredFD& monitoredFD, int& id)
   m_nextID = id + 1;
 
   m_monitoredFDs[id] = monitoredFD;
-  
+
   AddPollDesc(id, monitoredFD.fd, monitoredFD.events);
 }
 
@@ -180,7 +191,7 @@ void CFDEventMonitor::AddPollDesc(int id, int fd, short events)
   newPollFD.fd = fd;
   newPollFD.events = events;
   newPollFD.revents = 0;
-  
+
   m_pollDescs.push_back(newPollFD);
   m_monitoredFDbyPollDescs.push_back(id);
 }
@@ -206,7 +217,7 @@ void CFDEventMonitor::StartMonitoring()
     m_wakeupfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
     if (m_wakeupfd < 0)
     {
-      // ERROR LOG and FAIL
+      CLog::Log(LOGERROR, "CFDEventMonitor::StartMonitoring - Failed to create eventfd, error %d", errno);
       return;
     }
 

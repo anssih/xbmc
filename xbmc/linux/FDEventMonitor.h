@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2010-2013 Team XBMC
+ *      Copyright (C) 2014 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -29,6 +29,9 @@
 
 #include "utils/GlobalsHandling.h"
 
+/**
+ * Monitor a file descriptor with callback on poll() events.
+ */
 class CFDEventMonitor : private CThread
 {
 public:
@@ -37,12 +40,12 @@ public:
 
   struct MonitoredFD
   {
-    int fd;
-    short events;
+    int fd; /**< File descriptor to be monitored */
+    short events; /**< Events to be monitored (see poll(2)) */
 
-    EventCallback callback;
-    void *callbackData;
-    
+    EventCallback callback; /** Callback to be called on events */
+    void *callbackData; /** data parameter for EventCallback */
+
     MonitoredFD(int fd_, short events_, EventCallback callback_, void *callbackData_) :
       fd(fd_), events(events_), callback(callback_), callbackData(callbackData_) {}
     MonitoredFD() : fd(-1), events(0), callback(NULL), callbackData(NULL) {}
