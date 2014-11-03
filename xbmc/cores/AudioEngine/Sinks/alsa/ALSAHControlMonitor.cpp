@@ -63,6 +63,15 @@ bool CALSAHControlMonitor::Add(const std::string& ctlHandleName,
     return false;
   }
 
+  CLog::Log(LOGDEBUG, "CALSAHControlMonitor - Monitoring ALSA control %d, %d, %d, %d, %s, %d",
+            snd_hctl_elem_get_numid(elem),
+            snd_hctl_elem_get_interface(elem),
+            snd_hctl_elem_get_device(elem),
+            snd_hctl_elem_get_subdevice(elem),
+            snd_hctl_elem_get_name(elem),
+            snd_hctl_elem_get_index(elem)
+           );
+
   snd_hctl_elem_set_callback(elem, HCTLCallback);
 
   return true;
@@ -118,6 +127,14 @@ int CALSAHControlMonitor::HCTLCallback(snd_hctl_elem_t *elem, unsigned int mask)
    * Currently we just re-enumerate on any change.
    * Custom callbacks for handling other control monitoring may be implemented when needed.
    */
+  CLog::Log(LOGDEBUG, "CALSAHControlMonitor - Got callback on ALSA control %d, %d, %d, %d, %s, %d",
+            snd_hctl_elem_get_numid(elem),
+            snd_hctl_elem_get_interface(elem),
+            snd_hctl_elem_get_device(elem),
+            snd_hctl_elem_get_subdevice(elem),
+            snd_hctl_elem_get_name(elem),
+            snd_hctl_elem_get_index(elem)
+           );
   if (mask & SND_CTL_EVENT_MASK_VALUE)
   {
     CLog::Log(LOGDEBUG, "CALSAHControlMonitor - Monitored ALSA hctl value changed");
