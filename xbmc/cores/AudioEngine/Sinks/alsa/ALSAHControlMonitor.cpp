@@ -35,6 +35,35 @@ CALSAHControlMonitor::~CALSAHControlMonitor()
   Clear();
 }
 
+static void PrintValue(snd_hctl_elem_t *elem)
+{
+  char buf[16] = { 0 };
+  snd_ctl_elem_info_t *info;
+  snd_ctl_elem_value_t *control;
+
+  snd_ctl_elem_info_alloca(&info);
+  snd_ctl_elem_value_alloca(&control);
+  
+  std::string data;
+  
+  if (snd_hctl_elem_info(elem, info) < 0)
+    return;
+  
+  if (snd_hctl_elem_read(elem, control) < 0)
+    return;
+  
+  int count = snd_ctl_elem_info_get_count(info);
+  int idx;
+
+  for (idx = 0; idx < count; idx++) {
+    snprintf(buf, sizeof(buf)-1, "%02x ", snd_ctl_elem_value_get_byte(control, idx));
+    data += std::string(buf);
+  }
+  
+  CLog::Log(LOGDEBUG, "Control contents (size %d): %s", count, data.c_str());
+}
+
+
 bool CALSAHControlMonitor::Add(const std::string& ctlHandleName,
                                snd_ctl_elem_iface_t interface,
                                unsigned int device,
@@ -72,6 +101,8 @@ bool CALSAHControlMonitor::Add(const std::string& ctlHandleName,
             snd_hctl_elem_get_index(elem)
            );
 
+  PrintValue(elem);
+  
   snd_hctl_elem_set_callback(elem, HCTLCallback);
 
   return true;
@@ -127,14 +158,23 @@ int CALSAHControlMonitor::HCTLCallback(snd_hctl_elem_t *elem, unsigned int mask)
    * Currently we just re-enumerate on any change.
    * Custom callbacks for handling other control monitoring may be implemented when needed.
    */
-  CLog::Log(LOGDEBUG, "CALSAHControlMonitor - Got callback on ALSA control %d, %d, %d, %d, %s, %d",
+  CLog::Log(LOGDEBUG, "CALSAHControlMonitor - Got callback on ALSA control %d, %d, %d, %d, %s, %d, 0x%x",
             snd_hctl_elem_get_numid(elem),
             snd_hctl_elem_get_interface(elem),
             snd_hctl_elem_get_device(elem),
             snd_hctl_elem_get_subdevice(elem),
             snd_hctl_elem_get_name(elem),
-            snd_hctl_elem_get_index(elem)
+            snd_hctl_elem_get_index(elem),
+            mask
            );
+  PrintValue(elem);
+
+  if (mask == SND_CTL_EVENT_MASK_REMOVE)
+  {
+    CLog::Log(LOGDEBUG, "CALSAHControlMonitor - Monitored ALSA hctl removed");
+    return 0;
+  }
+
   if (mask & SND_CTL_EVENT_MASK_VALUE)
   {
     CLog::Log(LOGDEBUG, "CALSAHControlMonitor - Monitored ALSA hctl value changed");
