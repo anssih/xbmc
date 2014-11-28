@@ -22,10 +22,14 @@
 #include <errno.h>
 #include <android_native_app_glue.h>
 #include "EventLoop.h"
+// #include "EventDispatcher.h"
 #include "XBMCApp.h"
 #include "android/jni/SurfaceTexture.h"
 #include "utils/StringUtils.h"
 #include "CompileInfo.h"
+
+#include "android/jni/Window.h"
+#include "android/jni/WindowManager.h"
 
 // copied from new android_native_app_glue.c
 static void process_input(struct android_app* app, struct android_poll_source* source) {
@@ -43,11 +47,35 @@ static void process_input(struct android_app* app, struct android_poll_source* s
     if (processed == 0) {
         CXBMCApp::android_printf("process_input: Failure reading next input event: %s", strerror(errno));
     }
+    
+//     float rate = 50.000000f;
+//     CXBMCApp::android_printf("XYZ process_input THREAD 0x%x", (unsigned int)pthread_self());
+//     static bool oki = false;
+//     if (!oki) {
+//     CJNIWindow window = CXBMCApp::getWindow();
+//     CXBMCApp::android_printf("XYZ onSetRefreshRate THREAD 0x%x", (unsigned int)pthread_self());
+//     CXBMCApp::android_printf("XYZ - INIT 2 TRY RATE %f", rate);
+//     if (window)
+//     {
+//       CXBMCApp::android_printf("XYZ - INIT TRY RATE");
+//       CJNIWindowManagerLayoutParams params = window.getAttributes();
+//       
+//       params.setpreferredRefreshRate(rate);
+//       if (params.getpreferredRefreshRate() > 0.0)
+//       {
+//         window.setAttributes(params);
+//         CXBMCApp::android_printf("XYZ - INIT OK RATE %f", rate);
+//         oki = true;
+//       }
+//     }
+//     }
+    
 }
 
 extern void android_main(struct android_app* state)
 {
   {
+    CXBMCApp::android_printf("XYZ ANDROID MAIN THREAD 0x%x", (unsigned int)pthread_self());
     // make sure that the linker doesn't strip out our glue
     app_dummy();
 
@@ -62,6 +90,12 @@ extern void android_main(struct android_app* state)
     if (xbmcApp.isValid())
     {
       IInputHandler inputHandler;
+
+      // Event dispather for custom user events from application threads
+      // whose handlers (IUserHandler) need to be executed in the context
+      // of this thread (in CXBMCApp).
+//       CEventDispatcher eventDispatcher(state, &xbmcApp);
+      
       eventLoop.run(xbmcApp, inputHandler);
     }
     else
@@ -99,6 +133,13 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved)
       (void*)&CJNIContext::_onNewIntent
     };
     env->RegisterNatives(cMain, &mOnNewIntent, 1);
+
+    JNINativeMethod mCallNative = {
+      "_callNative",
+      "(JJ)V",
+      (void*)&CJNIContext::_callNative
+    };
+    env->RegisterNatives(cMain, &mCallNative, 1);
   }
 
   jclass cBroadcastReceiver = env->FindClass(bcReceiver.c_str());
@@ -122,6 +163,6 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved)
     };
     env->RegisterNatives(cFrameAvailableListener, &mOnFrameAvailable, 1);
   }
-
+  
   return version;
 }

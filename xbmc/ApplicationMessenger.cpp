@@ -223,7 +223,7 @@ void CApplicationMessenger::ProcessMessages()
     lock.Enter();
   }
 }
-
+#include "windowing/egl/WinSystemEGL.h"
 void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
 {
   switch (pMsg->dwMessage)
@@ -804,6 +804,7 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       
     case TMSG_DISPLAY_SETUP:
     {
+//      g_Windowing.InitRenderSystem();
       *((bool*)pMsg->lpVoid) = g_application.InitWindow();
       g_application.SetRenderGUI(true);
     }
@@ -813,6 +814,7 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
     {
       *((bool*)pMsg->lpVoid) = g_application.DestroyWindow();
       g_application.SetRenderGUI(false);
+//      g_Windowing.DestroyRenderSystem();
     }
     break;
 

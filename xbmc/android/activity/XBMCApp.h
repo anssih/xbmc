@@ -28,6 +28,7 @@
 
 #include "IActivityHandler.h"
 #include "IInputHandler.h"
+// #include "IUserHandler.h"
 
 #include "xbmc.h"
 #include "android/jni/Context.h"
@@ -53,7 +54,7 @@ struct androidPackage
 };
 
 
-class CXBMCApp : public IActivityHandler, public CJNIContext, public CJNIBroadcastReceiver
+class CXBMCApp : public IActivityHandler, public CJNIContext, public CJNIBroadcastReceiver/*, public IUserHandler*/
 {
 public:
   CXBMCApp(ANativeActivity *nativeActivity);
@@ -79,6 +80,10 @@ public:
   void onGainFocus();
   void onLostFocus();
 
+  // IUserHandler - callbacks for code execution in android_main() thread,
+  // events come from CEventDispatcher
+//   void onSetRefreshRate(float rate);
+
 
   static const ANativeWindow** GetNativeWindow(int timeout);
   static int SetBuffersGeometry(int width, int height, int format);
@@ -103,6 +108,9 @@ public:
   static void SetSystemVolume(int val);
 
   static int GetDPI();
+
+  static void SetRefreshRate(float rate);
+
 protected:
   // limit who can access Volume
   friend class CAESinkAUDIOTRACK;
@@ -117,6 +125,8 @@ private:
   void run();
   void stop();
   void SetupEnv();
+  static void SetRefreshRateCallback(CVariant *rate);
+
   static ANativeActivity *m_activity;
   CJNIWakeLock *m_wakeLock;
   static int m_batteryLevel;  

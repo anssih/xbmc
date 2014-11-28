@@ -35,7 +35,7 @@ public:
 protected:
   CJNIBase(jni::jhobject const& object);
   CJNIBase(std::string classname);
-  ~CJNIBase();
+  virtual ~CJNIBase();
 
   const std::string & GetClassName() {return m_className;};
 

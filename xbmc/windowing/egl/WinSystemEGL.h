@@ -47,6 +47,8 @@ public:
   virtual bool  IsExtSupported(const char* extension);
   virtual bool  CanDoWindowed() { return false; }
 
+  
+  virtual int  GetNumScreens() { return 1; }
   virtual void  ShowOSMouse(bool show);
   virtual bool  HasCursor();
 

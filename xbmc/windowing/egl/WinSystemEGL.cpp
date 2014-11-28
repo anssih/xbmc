@@ -142,6 +142,7 @@ bool CWinSystemEGL::InitWindowSystem()
 
 bool CWinSystemEGL::CreateWindow(RESOLUTION_INFO &res)
 {
+  CLog::Log(LOGERROR, "%s: CALLED",__FUNCTION__);
   if (!m_egl)
   {
     CLog::Log(LOGERROR, "CWinSystemEGL::CreateWindow no EGL!");
@@ -150,6 +151,9 @@ bool CWinSystemEGL::CreateWindow(RESOLUTION_INFO &res)
 
   if(m_egl)
     m_egl->SetNativeResolution(res);
+
+//     CRenderSystemGLES::DestroyRenderSystem();
+//   CRenderSystemGLES::InitRenderSystem();
 
   if (!m_egl->CreateSurface(m_display, m_config, &m_surface))
   {
@@ -220,6 +224,8 @@ bool CWinSystemEGL::CreateWindow(RESOLUTION_INFO &res)
 
   m_bWindowCreated = true;
 
+  CLog::Log(LOGERROR, "%s: DONE",__FUNCTION__);
+//  m_egl->SetNativeResolution(res);
   return true;
 }
 
@@ -294,6 +300,7 @@ bool CWinSystemEGL::CreateNewWindow(const CStdString& name, bool fullScreen, RES
 
 bool CWinSystemEGL::DestroyWindow()
 {
+  CLog::Log(LOGERROR, "%s: CALLED",__FUNCTION__);
   if (!m_egl)
     return false;
 
@@ -308,6 +315,7 @@ bool CWinSystemEGL::DestroyWindow()
 
   m_surface = EGL_NO_SURFACE;
   m_bWindowCreated = false;
+  CLog::Log(LOGERROR, "%s: DONE",__FUNCTION__);
   return true;
 }
 

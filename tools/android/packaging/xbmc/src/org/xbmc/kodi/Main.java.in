@@ -6,6 +6,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.graphics.PixelFormat;
+import android.view.Window;
+import android.view.WindowManager.LayoutParams;
 
 public class Main extends NativeActivity 
 {
@@ -20,6 +22,11 @@ public class Main extends NativeActivity
   public void onCreate(Bundle savedInstanceState) 
   {
     super.onCreate(savedInstanceState);
+//          Window thisWindow = getWindow();
+  //              LayoutParams params = thisWindow.getAttributes();
+    //                  params.preferredRefreshRate = (float)50.000000;
+      //                      thisWindow.setAttributes(params);
+
   }
 
   @Override
@@ -63,7 +70,32 @@ public class Main extends NativeActivity
               | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
               | API_SYSTEM_UI_FLAG_FULLSCREEN
               | API_SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+
+      Window thisWindow = getWindow();
+      LayoutParams params = thisWindow.getAttributes();
+//      params.preferredRefreshRate = (float)30.000000;
+      thisWindow.setAttributes(params);
+
     }
+  }
+
+  private native void _callNative(long funcAddr, long variantAddr);
+
+  private void runNativeOnUiThread(final long funcAddr, final long variantAddr) {
+    runOnUiThread(new Runnable() {
+      @Override
+      public void run()
+      {
+     //       Window thisWindow = getWindow();
+     // LayoutParams params = thisWindow.getAttributes();
+     // params.preferredRefreshRate = (float)30.000000;
+     //Log.v("XBMC", "XYZ SAVING ATTRIBUTES "+params.debug("out:"));
+      //thisWindow.setAttributes(params);
+      
+
+        _callNative(funcAddr, variantAddr);
+      }
+    });
   }
 
 }

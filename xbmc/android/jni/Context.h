@@ -32,6 +32,7 @@ class CJNIApplicationInfo;
 class CJNIFile;
 class CJNIContentResolver;
 class CJNIWindow;
+class CVariant;
 
 class CJNIContext
 {
@@ -53,9 +54,12 @@ public:
   static CJNIFile getExternalFilesDir(const std::string &path);
   static CJNIContentResolver getContentResolver();
   static CJNIWindow getWindow();
-
+  
   static CJNIContext* GetAppInstance() { return m_appInstance; };
   static void _onNewIntent(JNIEnv *env, jobject context, jobject intent);
+
+  static void runNativeOnUiThread(void (*callback)(CVariant *), CVariant* variant);
+  static void _callNative(JNIEnv *env, jobject context, jlong funcAddr, jlong variantAddr);
 
 protected:
   CJNIContext(const ANativeActivity *nativeActivity);

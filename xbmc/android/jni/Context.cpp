@@ -48,6 +48,8 @@
 
 #include <android/native_activity.h>
 
+// #include "utils/log.h"
+
 using namespace jni;
 
 jhobject CJNIContext::m_context(0);
@@ -197,8 +199,21 @@ CJNIContentResolver CJNIContext::getContentResolver()
 
 CJNIWindow CJNIContext::getWindow()
 {
-  return call_method<jhobject>(m_context,
+  CJNIWindow x = call_method<jhobject>(m_context,
     "getWindow", "()Landroid/view/Window;");
+  
+  JNIEnv* jenv = xbmc_jnienv();
+  jthrowable exception = jenv->ExceptionOccurred();
+  if (exception)
+  {
+    jenv->ExceptionClear();
+    jhclass excClass = find_class(jenv, "java/lang/Throwable");
+    jmethodID toStrMethod = get_method_id(jenv, excClass, "toString", "()Ljava/lang/String;");
+    jhstring msg = call_method<jhstring>(exception, toStrMethod);
+    __android_log_print(ANDROID_LOG_INFO, "XBMCPE", "XYZ EXCEPTION: %s", jcast<std::string>(msg).c_str());
+//     CLog::Log(LOGNOTICE, "EXCEPTION: %s", jcast<std::string>(msg).c_str());
+  }
+  return x;
 }
 
 void CJNIContext::_onNewIntent(JNIEnv *env, jobject context, jobject intent)
@@ -207,4 +222,17 @@ void CJNIContext::_onNewIntent(JNIEnv *env, jobject context, jobject intent)
   (void)context;
   if(m_appInstance)
     m_appInstance->onNewIntent(CJNIIntent(jhobject(intent)));
+}
+
+void CJNIContext::_callNative(JNIEnv *env, jobject context, jlong funcAddr, jlong variantAddr)
+{
+  (void)env;
+  (void)context;
+  ((void (*)(CVariant *))funcAddr)((CVariant *)variantAddr);
+}
+
+void CJNIContext::runNativeOnUiThread(void (*callback)(CVariant *), CVariant* variant)
+{
+  call_method<void>(m_context,
+    "runNativeOnUiThread", "(JJ)V", (jlong)callback, (jlong)variant);
 }

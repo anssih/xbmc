@@ -2894,6 +2894,8 @@ bool CApplication::OnAction(const CAction &action)
   return false;
 }
 
+#include "android/jni/Window.h"
+
 void CApplication::FrameMove(bool processEvents, bool processGUI)
 {
   MEASURE_FUNCTION;
@@ -2932,6 +2934,16 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
     ProcessGamepad(frameTime);
     ProcessEventServer(frameTime);
     ProcessPeripherals(frameTime);
+//    for (int i = 0; i < 520; i++) {
+
+//(void)(bool)    CXBMCApp::getWindow();
+//      CLog::Log(LOGNOTICE, "---------------------------------------------------------");
+
+//      CLog::Log(LOGNOTICE, "XYZ - IS WINDOW: %d", (bool)CXBMCApp::getWindow());
+//    }
+   // exit(0);
+
+  
     if (processGUI && m_renderGUI)
     {
       m_pInertialScrollingHandler->ProcessInertialScroll(frameTime);

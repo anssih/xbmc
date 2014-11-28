@@ -50,6 +50,8 @@ SRCS      += View.cpp
 SRCS      += Window.cpp
 SRCS      += Build.cpp
 SRCS      += KeyCharacterMap.cpp
+SRCS      += Display.cpp
+SRCS      += WindowManager.cpp
 
 LIB        = jni.a
 

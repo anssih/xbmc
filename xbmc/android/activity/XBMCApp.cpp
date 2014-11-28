@@ -45,6 +45,7 @@
 #include "utils/log.h"
 #include "ApplicationMessenger.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
 #include "AppParamParser.h"
 #include "XbmcContext.h"
 #include <android/bitmap.h>
@@ -71,6 +72,8 @@
 #include "android/jni/Cursor.h"
 #include "android/jni/ContentResolver.h"
 #include "android/jni/MediaStore.h"
+#include "android/jni/Window.h"
+#include "android/jni/WindowManager.h"
 #include "CompileInfo.h"
 
 #define GIGABYTES       1073741824
@@ -100,6 +103,7 @@ CXBMCApp::CXBMCApp(ANativeActivity* nativeActivity)
   m_activity = nativeActivity;
   m_firstrun = true;
   m_exiting=false;
+  android_printf("XYZ XBMCAPP CREATE FROM THREAD 0x%x", (unsigned int)pthread_self());
   if (m_activity == NULL)
   {
     android_printf("CXBMCApp: invalid ANativeActivity instance");
@@ -114,6 +118,7 @@ CXBMCApp::~CXBMCApp()
 
 void CXBMCApp::onStart()
 {
+  CXBMCApp::android_printf("XYZ onStart THREAD 0x%x", (unsigned int)pthread_self());
   android_printf("%s: ", __PRETTY_FUNCTION__);
   if (!m_firstrun)
   {
@@ -129,6 +134,7 @@ void CXBMCApp::onStart()
 
 void CXBMCApp::onResume()
 {
+  android_printf("XYZ XBMCAPP ONRESUME FROM THREAD 0x%x", (unsigned int)pthread_self());
   android_printf("%s: ", __PRETTY_FUNCTION__);
   CJNIIntentFilter batteryFilter;
   batteryFilter.addAction("android.intent.action.BATTERY_CHANGED");
@@ -196,6 +202,7 @@ void CXBMCApp::onLowMemory()
 
 void CXBMCApp::onCreateWindow(ANativeWindow* window)
 {
+  android_printf("XYZ XBMCAPP ONCREATEWINDOW FROM THREAD 0x%x", (unsigned int)pthread_self());
   android_printf("%s: ", __PRETTY_FUNCTION__);
   if (window == NULL)
   {
@@ -228,6 +235,9 @@ void CXBMCApp::onDestroyWindow()
   // If we have exited XBMC, it no longer exists.
   if (!m_exiting)
   {
+    m_window=NULL;
+    m_windowCreated.Reset();
+
     XBMC_DestroyDisplay();
     XBMC_Pause(true);
   }
@@ -245,6 +255,80 @@ void CXBMCApp::onGainFocus()
 void CXBMCApp::onLostFocus()
 {
   android_printf("%s: ", __PRETTY_FUNCTION__);
+}
+
+// void CXBMCApp::onSetRefreshRate(float rate)
+// {
+//   //   CJNIWindow window = getWindow();
+//   //   CXBMCApp::android_printf("XYZ onSetRefreshRate THREAD 0x%x", (unsigned int)pthread_self());
+//   //   CXBMCApp::android_printf("XYZ - INIT 2 TRY RATE %f", rate);
+//   //   if (window)
+//   //   {
+//   //     CXBMCApp::android_printf("XYZ - INIT TRY RATE");
+//   //     CJNIWindowManagerLayoutParams params = window.getAttributes();
+//   // 
+//   //     params.setpreferredRefreshRate(rate);
+//   //     if (params.getpreferredRefreshRate() > 0.0)
+//   //     {
+//   //       window.setAttributes(params);
+//   //       CXBMCApp::android_printf("XYZ - INIT OK RATE %f", rate);
+//   //     }
+//   //   }
+// }
+
+// static CEvent testi;
+
+#include "threads/Event.h"
+#include <time.h>
+
+void CXBMCApp::SetRefreshRateCallback(CVariant* rateVariant)
+{
+  float rate = rateVariant->asFloat();
+  delete rateVariant;
+//   sleep(10);
+
+  CJNIWindow window = getWindow();
+  struct timespec tp;
+  clock_gettime(CLOCK_MONOTONIC, &tp);
+  CXBMCApp::android_printf("XYZ TIME %llu.%llu", (long long unsigned int) tp.tv_sec, (long long unsigned int) tp.tv_nsec);
+  CXBMCApp::android_printf("XYZ onSetRefreshRate THREAD 0x%x", (unsigned int)pthread_self());
+  CXBMCApp::android_printf("XYZ - INIT 2 TRY RATE %f", rate);
+  if (window)
+  {
+    CXBMCApp::android_printf("XYZ - INIT TRY RATE");
+    CJNIWindowManagerLayoutParams params = window.getAttributes();
+    if (params.getpreferredRefreshRate() != rate)
+    {
+      params.setpreferredRefreshRate(rate);
+      if (params.getpreferredRefreshRate() > 0.0)
+      {
+        window.setAttributes(params);
+        CXBMCApp::android_printf("XYZ - INIT OK RATE %f", rate);
+      }
+    }
+  }
+//   testi.Set();
+  clock_gettime(CLOCK_MONOTONIC, &tp);
+  CXBMCApp::android_printf("XYZ SET TIME %llu.%llu", (long long unsigned int) tp.tv_sec, (long long unsigned int) tp.tv_nsec);
+}
+
+void CXBMCApp::SetRefreshRate(float rate)
+{
+  if (rate < 1.0)
+    return;
+
+  CVariant *variant = new CVariant(rate);
+
+  struct timespec tp;
+  clock_gettime(CLOCK_MONOTONIC, &tp);
+  CXBMCApp::android_printf("XYZ SE TIME %llu.%llu", (long long unsigned int) tp.tv_sec, (long long unsigned int) tp.tv_nsec);
+  CXBMCApp::android_printf("XYZ - SENDING EVENT %f", rate);
+  runNativeOnUiThread(SetRefreshRateCallback, variant);
+//   testi.WaitMSec(4000);
+//   struct timespect tp;
+  clock_gettime(CLOCK_MONOTONIC, &tp);
+  CXBMCApp::android_printf("XYZ TIME %llu.%llu", (long long unsigned int) tp.tv_sec, (long long unsigned int) tp.tv_nsec);
+  CXBMCApp::android_printf("XYZ WA - WAITED EVENT %f", rate);
 }
 
 bool CXBMCApp::getWakeLock()

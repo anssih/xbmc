@@ -22,6 +22,8 @@
 #include "JNIBase.h"
 #include "List.h"
 
+class CJNIDisplay;
+
 class CJNIViewInputDeviceMotionRange : public CJNIBase
 {
 public:
@@ -66,6 +68,7 @@ public:
   CJNIView(const jni::jhobject &object) : CJNIBase(object) {};
   ~CJNIView() {};
 
+  CJNIDisplay getDisplay();
   void setSystemUiVisibility(int visibility);
   int	 getSystemUiVisibility();
 

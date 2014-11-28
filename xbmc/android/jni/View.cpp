@@ -18,6 +18,7 @@
  *
  */
 
+#include "Display.h"
 #include "Window.h"
 #include "View.h"
 
@@ -135,6 +136,16 @@ void CJNIView::PopulateStaticFields()
   SYSTEM_UI_FLAG_HIDE_NAVIGATION           = (get_static_field<int>(clazz, "SYSTEM_UI_FLAG_HIDE_NAVIGATION"));
   SYSTEM_UI_FLAG_LOW_PROFILE               = (get_static_field<int>(clazz, "SYSTEM_UI_FLAG_LOW_PROFILE"));
   SYSTEM_UI_FLAG_VISIBLE                   = (get_static_field<int>(clazz, "SYSTEM_UI_FLAG_VISIBLE"));
+}
+
+
+CJNIDisplay CJNIView::getDisplay()
+{
+  if (GetSDKVersion() >= 17)
+    return call_method<jhobject>(m_object,
+      "getDisplay", "()Landroid/view/Display;");
+  else
+    return jhobject();
 }
 
 void CJNIView::setSystemUiVisibility(int visibility)
