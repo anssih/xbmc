@@ -131,6 +131,7 @@ CLinuxRendererGLES::YUVBUFFER::~YUVBUFFER()
 
 CLinuxRendererGLES::CLinuxRendererGLES()
 {
+  CLog::Log(LOGERROR, "XYZ CREATING LINUX RENDERER");
   m_textureTarget = GL_TEXTURE_2D;
 
   m_renderMethod = RENDER_GLSL;
@@ -196,6 +197,7 @@ CLinuxRendererGLES::CLinuxRendererGLES()
 
 CLinuxRendererGLES::~CLinuxRendererGLES()
 {
+  CLog::Log(LOGERROR, "XYZ DESTROYING LINUX RENDERER");
   UnInit();
 
   if (m_rgbBuffer != NULL) {

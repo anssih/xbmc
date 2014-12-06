@@ -224,6 +224,11 @@ void CApplicationMessenger::ProcessMessages()
   }
 }
 #include "windowing/egl/WinSystemEGL.h"
+#include "guilib/GUIFontManager.h"
+#include "guilib/TextureManager.h"
+#include "TextureCache.h"
+
+
 void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
 {
   switch (pMsg->dwMessage)
@@ -804,17 +809,42 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       
     case TMSG_DISPLAY_SETUP:
     {
+
+//      break;
+      CLog::Log(LOGWARNING, "XYZ                             DISPLAY_SETUP");
+      if (!g_application.GetRenderGUI())
+      {
 //      g_Windowing.InitRenderSystem();
       *((bool*)pMsg->lpVoid) = g_application.InitWindow();
+
+//      CLog::Log(LOGWARNING, "XYZ           CLEARING CACHE 1");
+//      g_fontManager.Clear();
+      CLog::Log(LOGWARNING, "XYZ           CLEARING CACHE 2");
+//      g_fontManager.ClearCharCache();
+//      CTextureCache::Get().Deinitialize();
+//      g_application.UnloadSkin(true);
+      CLog::Log(LOGWARNING, "XYZ           CLEARING CACHE 3");
+      g_application.ReloadSkin();
+//      g_TextureManager.Cleanup();
+//      g_application.LoadSkin(CSettings::Get().GetString("lookandfeel.skin")
+      CLog::Log(LOGWARNING, "XYZ           CLEARING CACHE 6");
+//      CTextureCache::Get().Initialize();
+      CLog::Log(LOGWARNING, "XYZ           CLEARING CACHE 4");
+
+      
+      //g_windowManager.SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_RENDERER_RESET);
       g_application.SetRenderGUI(true);
+      }
     }
     break;
     
     case TMSG_DISPLAY_DESTROY:
     {
+//      break;
       *((bool*)pMsg->lpVoid) = g_application.DestroyWindow();
+      CLog::Log(LOGWARNING, "XYZ                             DISPLAY_DESTROY");
       g_application.SetRenderGUI(false);
-//      g_Windowing.DestroyRenderSystem();
+      g_Windowing.DestroyRenderSystem();
     }
     break;
 

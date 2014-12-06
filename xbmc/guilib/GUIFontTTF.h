@@ -112,7 +112,9 @@ protected:
   inline Character *GetCharacter(character_t letter);
   bool CacheCharacter(wchar_t letter, uint32_t style, Character *ch);
   void RenderCharacter(float posX, float posY, const Character *ch, color_t color, bool roundX);
+public:
   void ClearCharacterCache();
+protected:
 
   virtual CBaseTexture* ReallocTexture(unsigned int& newHeight) = 0;
   virtual bool CopyCharToTexture(FT_BitmapGlyph bitGlyph, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2) = 0;

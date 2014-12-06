@@ -221,11 +221,11 @@ bool CEGLNativeTypeAndroid::GetNativeResolution(RESOLUTION_INFO *res) const
   res->strMode       = StringUtils::Format("%dx%d @ %.2f%s - Full Screen", res->iScreenWidth, res->iScreenHeight, res->fRefreshRate,
   res->dwFlags & D3DPRESENTFLAG_INTERLACED ? "i" : "");
   CLog::Log(LOGNOTICE,"Current resolution: %s\n",res->strMode.c_str());
-  if (res->iScreenWidth < 0 || res->iScreenHeight < 0) {
-      res->iScreenWidth = 1920;
-      res->iScreenHeight = 1080;
-      return false;
-  }
+//   if (res->iScreenWidth < 0 || res->iScreenHeight < 0) {
+//       res->iScreenWidth = 1920;
+//       res->iScreenHeight = 1080;
+//       return false;
+//   }
 //   if (res->iScreenHeight < 0)
 //       return false;
   return true;

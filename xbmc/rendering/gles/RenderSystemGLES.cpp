@@ -60,6 +60,9 @@ CRenderSystemGLES::~CRenderSystemGLES()
 
 bool CRenderSystemGLES::InitRenderSystem()
 {
+//   if (m_bRenderCreated)
+//     DestroyRenderSystem();
+
   GLint maxTextureSize;
 
   glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
@@ -551,10 +554,21 @@ void CRenderSystemGLES::ResetScissors()
 
 void CRenderSystemGLES::InitialiseGUIShader()
 {
+  bool firstInit = false;
+
   if (!m_pGUIshader)
   {
     m_pGUIshader = new CGUIShader*[SM_ESHADERCOUNT];
-    for (int i = 0; i < SM_ESHADERCOUNT; i++)
+    firstInit = true;
+  }
+  else
+  {
+    CLog::Log(LOGDEBUG, "GUI Shader - Trying to Initialise again. Was this intentional?");
+  }
+
+  for (int i = 0; i < SM_ESHADERCOUNT; i++)
+  {
+    if (firstInit || !m_pGUIshader[i])
     {
       if (i == SM_TEXTURE_RGBA_OES)
       {
@@ -579,10 +593,6 @@ void CRenderSystemGLES::InitialiseGUIShader()
         CLog::Log(LOGDEBUG, "GUI Shader [%s]- Initialise successful : %p", ShaderNames[i], m_pGUIshader[i]);
       }
     }
-  }
-  else
-  {
-    CLog::Log(LOGDEBUG, "GUI Shader - Tried to Initialise again. Was this intentional?");
   }
 }
 

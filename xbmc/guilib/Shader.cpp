@@ -393,11 +393,14 @@ bool CGLSLShaderProgram::Enable()
         if (params[0]!=GL_TRUE)
         {
           GLchar log[LOG_SIZE];
+          log[0] = '\0';
           CLog::Log(LOGERROR, "GL: Error validating shader");
           glGetProgramInfoLog(m_shaderProgram, LOG_SIZE, NULL, log);
-          CLog::Log(LOGERROR, "%s", log);
+          CLog::Log(LOGERROR, "%s", log[0] ? log : "no shared log available");
+//          return false;
         }
         m_validated = true;
+          CLog::Log(LOGERROR, "GL: DONE SHADER VALIDATION");
       }
       VerifyGLState();
       return true;
