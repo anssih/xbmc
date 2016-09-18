@@ -36,6 +36,7 @@ public:
   static const char *StreamMarker;
   static const char *BandwidthMarker;
   static const char *OffsetMarker;
+  static const char *AlternativeRenditionMarker;
 
 public:
   CPlayListM3U(void);

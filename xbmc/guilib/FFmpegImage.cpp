@@ -80,6 +80,7 @@ struct ThumbDataManagement
     frame_input = nullptr;
     av_frame_free(&frame_temporary);
     frame_temporary = nullptr;
+    CLog::LogFunction(LOGERROR, __FUNCTION__, "Closing avfmtctx 0x%x", avOutctx);    
     avcodec_close(avOutctx);
     avcodec_free_context(&avOutctx);
     avOutctx = nullptr;
@@ -521,6 +522,7 @@ bool CFFmpegImage::CreateThumbnailFromSurface(unsigned char* bufferin, unsigned 
     return false;
   }
 
+  CLog::LogFunction(LOGERROR, __FUNCTION__, "tdm.codec %d", tdm.codec);
   tdm.avOutctx = avcodec_alloc_context3(tdm.codec);
   if (!tdm.avOutctx)
   {

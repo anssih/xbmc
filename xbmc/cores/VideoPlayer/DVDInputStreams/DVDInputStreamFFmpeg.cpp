@@ -203,6 +203,14 @@ CURL CDVDInputStreamFFmpeg::GetM3UBestBandwidthStream(const CURL &url, size_t ba
     // skip the first line
     if (strLine == M3U::StartMarker)
         continue;
+    else if (StringUtils::StartsWith(strLine, M3U::AlternativeRenditionMarker))
+    {
+      // The stream has alternative renditions (multiple substreams that need
+      // to played back together or chosen by user) which we do not how to handle
+      // here. Just give the entire playlist to FFmpeg to let it handle it.
+      CLog::LogFunction(LOGINFO, __FUNCTION__, "Auto-selection not pre-handled due to alternative renditions");
+      return url;
+    }
     else if (StringUtils::StartsWith(strLine, M3U::StreamMarker))
     {
       // parse the line so we can pull out the bandwidth

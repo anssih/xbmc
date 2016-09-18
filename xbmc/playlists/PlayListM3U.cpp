@@ -40,6 +40,7 @@ const char* CPlayListM3U::VLCOptMarker = "#EXTVLCOPT";
 const char* CPlayListM3U::StreamMarker = "#EXT-X-STREAM-INF";
 const char* CPlayListM3U::BandwidthMarker = "BANDWIDTH";
 const char* CPlayListM3U::OffsetMarker = "#EXT-KX-OFFSET";
+const char* CPlayListM3U::AlternativeRenditionMarker = "#EXT-X-MEDIA";
 
 // example m3u file:
 //   #EXTM3U

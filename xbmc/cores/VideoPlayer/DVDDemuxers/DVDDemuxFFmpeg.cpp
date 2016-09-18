@@ -1188,16 +1188,11 @@ void CDVDDemuxFFmpeg::CreateStreams(unsigned int program)
       m_program = program;
     }
     else
-      m_program = UINT_MAX;
+      m_program = AutoSelectProgram(m_pFormatContext);
 
-    // look for first non empty stream and discard nonselected programs
+    // discard nonselected programs
     for (unsigned int i = 0; i < m_pFormatContext->nb_programs; i++)
     {
-      if(m_program == UINT_MAX && m_pFormatContext->programs[i]->nb_stream_indexes > 0)
-      {
-        m_program = i;
-      }
-
       if(i != m_program)
         m_pFormatContext->programs[i]->discard = AVDISCARD_ALL;
     }
@@ -1208,6 +1203,16 @@ void CDVDDemuxFFmpeg::CreateStreams(unsigned int program)
       {
         AddStream(m_pFormatContext->programs[m_program]->stream_index[i]);
       }
+
+      // discard non-added streams
+      // (this workarounds FFmpeg HLS demuxer not following AVProgram discard flags)
+      for (unsigned int i = 0; i < m_pFormatContext->nb_streams; i++) {
+        if (!m_streams.count(i))
+        {
+          m_pFormatContext->streams[i]->discard = AVDISCARD_ALL;
+        }
+      }
+
     }
   }
   else
@@ -1681,6 +1686,56 @@ bool CDVDDemuxFFmpeg::IsProgramChange()
       return true;
   }
   return false;
+}
+
+unsigned int CDVDDemuxFFmpeg::AutoSelectProgram()
+{
+  unsigned int bestProgram = UINT_MAX;
+  int bandwidth = CSettings::GetInstance().GetInt(CSettings::SETTING_NETWORK_BANDWIDTH);
+  int bestProgramBitrate = 0;
+
+  // kbps to bps
+  bandwidth *= 1000;
+
+  // use max bandwidth if not set by user
+  if (bandwidth <= 0)
+  {
+    bandwidth = INT_MAX;
+  }
+
+  for (unsigned int i = 0; i < m_pFormatContext->nb_programs; i++)
+  {
+    // first non-empty program is selected (unless a better variant_bitrate is found below)
+    if (bestProgram == UINT_MAX && m_pFormatContext->programs[i]->nb_stream_indexes > 0)
+    {
+      bestProgram = i;
+    }
+
+    // HLS bitrate options are demuxed as programs by FFmpeg
+    AVDictionaryEntry* bitrateEntry = av_dict_get(m_pFormatContext->programs[i]->metadata, "variant_bitrate", NULL, 0);
+    if (bitrateEntry)
+    {
+      int programBitrate = atoi(bitrateEntry->value);
+      if (programBitrate > bestProgramBitrate && programBitrate <= bandwidth)
+      {
+        bestProgramBitrate = programBitrate;
+        bestProgram = i;
+      }
+    }
+    else if (bestProgram != UINT_MAX)
+    {
+      // No bitrate entry => these are not HLS bitrate variants
+      // => just return the non-empty program if one has been found.
+      break;
+    }
+  }
+
+  if (bestProgramBitrate)
+  {
+    CLog::LogFunction(LOGINFO, __FUNCTION__, "Auto-selecting program %d based on configured bandwidth", bestProgram);
+  }
+
+  return bestProgram;
 }
 
 std::string CDVDDemuxFFmpeg::GetStereoModeFromMetadata(AVDictionary *pMetadata)
