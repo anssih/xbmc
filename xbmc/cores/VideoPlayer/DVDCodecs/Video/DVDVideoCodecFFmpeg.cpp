@@ -17,6 +17,7 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+#include "settings/DisplaySettings.h"
 
 #include "system.h"
 #include "DVDVideoCodecFFmpeg.h"
@@ -401,6 +402,8 @@ void CDVDVideoCodecFFmpeg::SetFilters()
 
   m_filters_next.clear();
 
+#if 0
+  // TODO multiple filters not handled properly, needs ',' separators
   if (filters & FILTER_ROTATE)
   {
     switch(m_iOrientation)
@@ -429,6 +432,9 @@ void CDVDVideoCodecFFmpeg::SetFilters()
     if (filters & FILTER_DEINTERLACE_FLAGGED)
       m_filters_next += ":1";
   }
+#endif
+  
+  m_filters_next += "cropdetect";
 }
 
 void CDVDVideoCodecFFmpeg::UpdateName()
@@ -856,6 +862,32 @@ bool CDVDVideoCodecFFmpeg::GetPictureCommon(VideoPicture* pVideoPicture)
   {
     strncpy(pVideoPicture->stereo_mode, (const char*)entry->value, sizeof(pVideoPicture->stereo_mode));
     pVideoPicture->stereo_mode[sizeof(pVideoPicture->stereo_mode)-1] = '\0';
+  }
+
+  // HACK
+  AVDictionaryEntry * cropx = av_dict_get(av_frame_get_metadata(m_pFrame), "lavfi.cropdetect.x", NULL, 0);
+  AVDictionaryEntry * cropy = av_dict_get(av_frame_get_metadata(m_pFrame), "lavfi.cropdetect.y", NULL, 0);
+  AVDictionaryEntry * cropw = av_dict_get(av_frame_get_metadata(m_pFrame), "lavfi.cropdetect.w", NULL, 0);
+  AVDictionaryEntry * croph = av_dict_get(av_frame_get_metadata(m_pFrame), "lavfi.cropdetect.h", NULL, 0);
+  if(cropx && cropx->value && cropy && cropy->value && cropw && cropw->value && croph && croph->value)
+  {
+    int crop_x = atoi((const char*)cropx->value);
+    int crop_y = atoi((const char*)cropy->value);
+    int crop_w = atoi((const char*)cropw->value);
+    int crop_h = atoi((const char*)croph->value);
+    
+    //printf("test x y w h %d %d %d %d\n", pVideoPicture->crop_x, pVideoPicture->crop_y, pVideoPicture->crop_w, pVideoPicture->crop_h);
+
+    // HACK this obviously should not be here...
+    if (crop_h < pVideoPicture->iDisplayHeight)
+    {
+      double zoomAmount = (double)pVideoPicture->iDisplayHeight / crop_h;
+      CDisplaySettings::GetInstance().SetZoomAmount(zoomAmount);
+
+      // or save the crop values and have SetFilters() add a crop filter?
+      // or...
+    }
+
   }
 
   pVideoPicture->iRepeatPicture = 0.5 * m_pFrame->repeat_pict;
