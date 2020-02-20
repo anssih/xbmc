@@ -17,7 +17,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
-#define TRUEHD_BUF_SIZE 61440
+#define TRUEHD_BUF_SIZE (2 * 61440)
 
 CDVDAudioCodecPassthrough::CDVDAudioCodecPassthrough(CProcessInfo &processInfo, CAEStreamInfo::DataType streamType) :
   CDVDAudioCodec(processInfo)
@@ -181,21 +181,21 @@ bool CDVDAudioCodecPassthrough::AddData(const DemuxPacket &packet)
     if (!m_trueHDoffset)
       memset(m_trueHDBuffer.get(), 0, TRUEHD_BUF_SIZE);
 
-    if (m_dataSize > 2560 - 2)
+    if (m_dataSize > 2 * 2560 - 2)
     {
       CLog::Log(LOGERROR,
                 "CDVDAudioCodecPassthrough::AddData - truncating TrueHD frame of %u bytes",
                 m_dataSize);
-      m_dataSize = 2560 - 2;
+      m_dataSize = 2 * 2560 - 2;
     }
     memcpy(&(m_trueHDBuffer.get())[m_trueHDoffset], m_buffer, m_dataSize);
     uint8_t highByte = (m_dataSize >> 8) & 0xFF;
     uint8_t lowByte = m_dataSize & 0xFF;
-    m_trueHDBuffer[m_trueHDoffset+2560-2] = highByte;
-    m_trueHDBuffer[m_trueHDoffset+2560-1] = lowByte;
-    m_trueHDoffset += 2560;
+    m_trueHDBuffer[m_trueHDoffset+2*2560-2] = highByte;
+    m_trueHDBuffer[m_trueHDoffset+2*2560-1] = lowByte;
+    m_trueHDoffset += 2*2560;
 
-    if (m_trueHDoffset / 2560 == 24)
+    if (m_trueHDoffset / (2 * 2560) == 24)
     {
       m_dataSize = m_trueHDoffset;
       m_trueHDoffset = 0;

@@ -937,16 +937,19 @@ unsigned int CActiveAESink::OutputSamples(CSampleBuffer* samples)
         m_packer->Reset();
         if (m_sinkFormat.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_TRUEHD)
         {
-          if (frames == 61440)
+          if (frames == 2 * 61440)
           {
             int offset;
             int len;
+            // BUG: Pack() may output MAT frames on multiple iterations
+            //      => all except last one are lost.
             for (int i=0; i<24; i++)
             {
-              offset = i*2560;
-              len = (*(buffer[0] + offset+2560-2) << 8) + *(buffer[0] + offset+2560-1);
+              offset = i*2*2560;
+              len = (*(buffer[0] + offset+2*2560-2) << 8) + *(buffer[0] + offset+2*2560-1);
               m_packer->Pack(m_sinkFormat.m_streamInfo, buffer[0] + offset, len);
             }
+            // BUG: No data output is not handled.
           }
           else
           {
@@ -993,7 +996,7 @@ unsigned int CActiveAESink::OutputSamples(CSampleBuffer* samples)
     }
     else
     {
-      if (m_sinkFormat.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_TRUEHD && frames == 61440)
+      if (m_sinkFormat.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_TRUEHD && frames == 2 * 61440)
       {
         int offset;
         int len;
@@ -1002,8 +1005,8 @@ unsigned int CActiveAESink::OutputSamples(CSampleBuffer* samples)
         p_mergebuffer = mergebuffer.get();
         for (int i=0; i<24; i++)
         {
-          offset = i*2560;
-          len = (*(buffer[0] + offset+2560-2) << 8) + *(buffer[0] + offset+2560-1);
+          offset = i*2*2560;
+          len = (*(buffer[0] + offset+2*2560-2) << 8) + *(buffer[0] + offset+2*2560-1);
           memcpy(&(mergebuffer.get())[size], buffer[0] + offset, len);
           size += len;
         }

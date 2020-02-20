@@ -38,6 +38,8 @@ private:
   /* we keep the trueHD and dtsHD buffers separate so that we can handle a fast stream switch */
   uint8_t      *m_trueHD;
   unsigned int  m_trueHDPos = 0;
+  uint16_t      m_trueHDPrevTime = 0; // input_timing from the last frame
+  unsigned int  m_trueHDPrevSize = 0; // previous frame size in bytes, including any MAT codes
 
   uint8_t      *m_dtsHD;
   unsigned int  m_dtsHDSize = 0;

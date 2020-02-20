@@ -11,14 +11,15 @@
 #include "AEPackIEC61937.h"
 #include "AEStreamInfo.h"
 #include "utils/log.h"
+#include "Util.h"
 
+#include <algorithm>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
 #define BURST_HEADER_SIZE       8
-#define TRUEHD_FRAME_OFFSET     2560
-#define MAT_MIDDLE_CODE_OFFSET -4
+#define MAT_PKT_OFFSET          61440
 #define MAT_FRAME_SIZE          61424
 #define EAC3_MAX_BURST_PAYLOAD_SIZE (24576 - BURST_HEADER_SIZE)
 
@@ -127,7 +128,6 @@ uint8_t* CAEBitstreamPacker::GetBuffer()
 void CAEBitstreamPacker::Reset()
 {
   m_dataSize = 0;
-  m_trueHDPos = 0;
   m_pauseDuration = 0;
   m_packedBuffer[0] = 0;
 }
@@ -140,6 +140,16 @@ void CAEBitstreamPacker::PackTrueHD(CAEStreamInfo &info, uint8_t* data, int size
   static const uint8_t mat_middle_code[12] = { 0xC3, 0xC1, 0x42, 0x49, 0x3B, 0xFA, 0x82, 0x83, 0x49, 0x80, 0x77, 0xE0 };
   static const uint8_t mat_end_code   [16] = { 0xC3, 0xC2, 0xC0, 0xC4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x97, 0x11 };
 
+  static const struct {
+      unsigned int pos;
+      const uint8_t *code;
+      unsigned int len;
+  } matCodes[] = {
+      { 0, mat_start_code, sizeof(mat_start_code) },
+      { 30708, mat_middle_code, sizeof(mat_middle_code) },
+      { MAT_FRAME_SIZE - sizeof(mat_end_code), mat_end_code, sizeof(mat_end_code) },
+  };
+
   /* create the buffer if it doesnt already exist */
   if (!m_trueHD)
   {
@@ -147,48 +157,112 @@ void CAEBitstreamPacker::PackTrueHD(CAEStreamInfo &info, uint8_t* data, int size
     m_trueHDPos = 0;
   }
 
-  /* setup the frame for the data */
-  if (m_trueHDPos == 0)
+  if (size < 4 || info.m_sampleRate < 44100)
+    return;
+
+  unsigned int paddingRemaining = 0;
+  unsigned int totalFrameSize = size;
+
+  uint16_t inputTiming = (data[2] << 8) | data[3];
+  if (m_trueHDPrevSize)
   {
-    memset(m_trueHD, 0, MAT_FRAME_SIZE);
-    memcpy(m_trueHD, mat_start_code, sizeof(mat_start_code));
-    memcpy(m_trueHD + (12 * TRUEHD_FRAME_OFFSET) - BURST_HEADER_SIZE + MAT_MIDDLE_CODE_OFFSET, mat_middle_code, sizeof(mat_middle_code));
-    memcpy(m_trueHD + MAT_FRAME_SIZE - sizeof(mat_end_code), mat_end_code, sizeof(mat_end_code));
+    unsigned int samplesPerFrame = 40 * info.m_sampleRate / ((info.m_sampleRate % 48000) ? 44100 : 48000);
+    uint16_t deltaSamples = inputTiming - m_trueHDPrevTime;
+    /*
+     * One multiple-of-48kHz frame is 1/1200 sec and the IEC 61937 rate
+     * is 768kHz = 768000*4 bytes/sec.
+     * The nominal space per frame is therefore
+     * (768000*4 bytes/sec) * (1/1200 sec) = 2560 bytes.
+     * For multiple-of-44.1kHz frames: 1/1102.5 sec, 705.6kHz, 2560 bytes.
+     *
+     * 2560 is divisible by samplesPerFrame.
+     */
+    unsigned int deltaBytes = deltaSamples * 2560 / samplesPerFrame;
+
+    /* padding needed before this frame */
+    paddingRemaining = deltaBytes - m_trueHDPrevSize;
+
+    /* sanity check */
+    if (paddingRemaining < 0 || paddingRemaining >= MAT_FRAME_SIZE / 2)
+        paddingRemaining = 0;
   }
 
-  size_t offset;
-  if (m_trueHDPos == 0 )
-    offset = (m_trueHDPos * TRUEHD_FRAME_OFFSET) + sizeof(mat_start_code);
-  else if (m_trueHDPos == 12)
-    offset = (m_trueHDPos * TRUEHD_FRAME_OFFSET) + sizeof(mat_middle_code) - BURST_HEADER_SIZE + MAT_MIDDLE_CODE_OFFSET;
-  else
-    offset = (m_trueHDPos * TRUEHD_FRAME_OFFSET) - BURST_HEADER_SIZE;
+  unsigned int nextCodeIdx = 0;
+  for (nextCodeIdx = 0; nextCodeIdx < ARRAY_SIZE(matCodes); nextCodeIdx++)
+    if (m_trueHDPos <= matCodes[nextCodeIdx].pos)
+      break;
 
-  int maxSize = TRUEHD_FRAME_OFFSET;
-  if (m_trueHDPos == 0)
-    maxSize -= sizeof(mat_start_code) + BURST_HEADER_SIZE;
-  else if (m_trueHDPos == 11)
-    maxSize -= -MAT_MIDDLE_CODE_OFFSET;
-  else if (m_trueHDPos == 12)
-    maxSize -= sizeof(mat_middle_code) + MAT_MIDDLE_CODE_OFFSET;
-  else if (m_trueHDPos == 23)
-    maxSize -= sizeof(mat_end_code) + (24 * TRUEHD_FRAME_OFFSET - MAT_FRAME_SIZE);
-
-  if (size > maxSize)
+  if (nextCodeIdx >= ARRAY_SIZE(matCodes))
   {
-    CLog::Log(LOGERROR, "CAEBitstreamPacker::PackTrueHD - truncating TrueHD frame of %d bytes",
-              size);
-    size = maxSize;
+    CLog::Log(LOGERROR, "CAEBitstreamPacker - Invalid m_trueHDPos {}", m_trueHDPos);
+    return;
   }
 
-  memcpy(m_trueHD + offset, data, size);
+  unsigned int dataRemaining = size;
+  const uint8_t *dataPtr = data;
 
-  /* if we have a full frame */
-  if (++m_trueHDPos == 24)
+  while (paddingRemaining || dataRemaining || matCodes[nextCodeIdx].pos == m_trueHDPos)
   {
-    m_trueHDPos = 0;
-    m_dataSize  = CAEPackIEC61937::PackTrueHD(m_trueHD, MAT_FRAME_SIZE, m_packedBuffer);
+    if (matCodes[nextCodeIdx].pos == m_trueHDPos)
+    {
+      /* time to insert MAT code */
+      unsigned int codeLen = matCodes[nextCodeIdx].len;
+      unsigned int codeLenRemaining = codeLen;
+      memcpy(m_trueHD + matCodes[nextCodeIdx].pos, matCodes[nextCodeIdx].code, codeLen);
+      m_trueHDPos += codeLen;
+
+      nextCodeIdx++;
+      if (nextCodeIdx == ARRAY_SIZE(matCodes))
+      {
+        /* this was the last code, move to the next MAT frame */
+        m_dataSize  = CAEPackIEC61937::PackTrueHD(m_trueHD, MAT_FRAME_SIZE, m_packedBuffer);
+
+        nextCodeIdx = 0;
+        m_trueHDPos = 0;
+
+        /* inter-frame gap has to be counted as well, add it */
+        codeLenRemaining += MAT_PKT_OFFSET - MAT_FRAME_SIZE;
+      }
+
+      if (paddingRemaining)
+      {
+        /* consider the MAT code as padding */
+        unsigned int countedAsPadding = std::min(paddingRemaining, codeLenRemaining);
+        paddingRemaining -= countedAsPadding;
+        codeLenRemaining -= countedAsPadding;
+      }
+      /* count the remainder of the code as part of frame size */
+      if (codeLenRemaining)
+        totalFrameSize += codeLenRemaining;
+    }
+
+    if (paddingRemaining)
+    {
+      unsigned int paddingToInsert = std::min(matCodes[nextCodeIdx].pos - m_trueHDPos,
+                                              paddingRemaining);
+
+      memset(m_trueHD + m_trueHDPos, 0, paddingToInsert);
+      m_trueHDPos += paddingToInsert;
+      paddingRemaining -= paddingToInsert;
+
+      if (paddingRemaining)
+        continue; /* time to insert MAT code */
+    }
+
+    if (dataRemaining)
+    {
+      unsigned int dataToInsert = std::min(matCodes[nextCodeIdx].pos - m_trueHDPos,
+                                           dataRemaining);
+
+      memcpy(m_trueHD + m_trueHDPos, dataPtr, dataToInsert);
+      m_trueHDPos += dataToInsert;
+      dataPtr += dataToInsert;
+      dataRemaining -= dataToInsert;
+    }
   }
+
+  m_trueHDPrevSize = totalFrameSize;
+  m_trueHDPrevTime = inputTiming;
 }
 
 void CAEBitstreamPacker::PackDTSHD(CAEStreamInfo &info, uint8_t* data, int size)
